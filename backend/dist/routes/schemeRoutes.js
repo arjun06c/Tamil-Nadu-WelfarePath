@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const schemeController_1 = require("../controllers/schemeController");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const router = (0, express_1.Router)();
+router.get('/domains', schemeController_1.getAllDomains);
+router.get('/', schemeController_1.getAllSchemes);
+router.get('/evaluate-all', authMiddleware_1.authenticateJWT, schemeController_1.evaluateAllSchemesHandler);
+router.get('/:id', schemeController_1.getSchemeById);
+router.post('/:id/evaluate', authMiddleware_1.authenticateJWT, schemeController_1.evaluateSchemeEligibilityHandler);
+exports.default = router;
