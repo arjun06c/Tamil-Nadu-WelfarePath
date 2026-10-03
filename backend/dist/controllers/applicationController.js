@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resubmitCorrection = exports.getApplicationById = exports.getMyApplications = exports.submitApplication = void 0;
+exports.resubmitCorrection = exports.getMyDocuments = exports.getApplicationById = exports.getMyApplications = exports.submitApplication = void 0;
 const Application_1 = require("../models/Application");
 const Scheme_1 = require("../models/Scheme");
 const ApplicationDocument_1 = require("../models/ApplicationDocument");
@@ -57,10 +57,15 @@ const submitApplication = async (req, res) => {
                     fileUrl: doc.fileUrl || 'https://via.placeholder.com/600x800?text=Uploaded+Proof',
                     fileSize: doc.fileSize || 2048,
                     mimeType: doc.mimeType || 'application/pdf',
+                    source: doc.source || 'MANUAL_UPLOAD',
+                    sourceReference: doc.sourceReference || '',
+                    issuer: doc.issuer || '',
+                    issueDate: doc.issueDate || '',
+                    retrievedAt: doc.retrievedAt ? new Date(doc.retrievedAt) : undefined,
                     uploadStatus: 'UPLOADED',
                     ocrStatus: doc.ocrConfidence ? 'COMPLETED' : 'BYPASSED',
                     ocrConfidence: doc.ocrConfidence || 0,
-                    extractedData: doc.ocrText ? { text: doc.ocrText } : {},
+                    extractedData: doc.ocrText ? { text: doc.ocrText } : (doc.extractedData || {}),
                     citizenConfirmedData: doc.confirmedFields || {},
                     verificationStatus: 'NOT_REVIEWED'
                 });
@@ -141,6 +146,29 @@ const getApplicationById = async (req, res) => {
     }
 };
 exports.getApplicationById = getApplicationById;
+const getMyDocuments = async (req, res) => {
+    try {
+        if (!req.user) {
+            res.status(401).json({ message: 'Unauthenticated' });
+            return;
+        }
+        const documents = await ApplicationDocument_1.ApplicationDocument.find({ citizenId: req.user.id })
+            .populate({
+            path: 'applicationId',
+            select: 'applicationReference status schemeId',
+            populate: { path: 'schemeId', select: 'name' }
+        })
+            .sort({ createdAt: -1 });
+        res.status(200).json({
+            documents
+        });
+    }
+    catch (error) {
+        console.error('getMyDocuments error:', error);
+        res.status(500).json({ message: 'Error fetching application documents' });
+    }
+};
+exports.getMyDocuments = getMyDocuments;
 const resubmitCorrection = async (req, res) => {
     try {
         if (!req.user) {
@@ -157,9 +185,14 @@ const resubmitCorrection = async (req, res) => {
         // Replace or add document
         if (replacementDoc) {
             await ApplicationDocument_1.ApplicationDocument.findOneAndUpdate({ applicationId: application._id, docType: replacementDoc.docType }, {
-                fileName: replacementDoc.fileName,
-                fileUrl: replacementDoc.fileUrl,
-                uploadStatus: 'UPLOADED',
+                fileName: replacementDoc.fileName || 'Document.pdf',
+                fileUrl: replacementDoc.fileUrl || 'https://via.placeholder.com/600x800',
+                source: replacementDoc.source || 'MANUAL_UPLOAD',
+                sourceReference: replacementDoc.sourceReference || '',
+                issuer: replacementDoc.issuer || '',
+                issueDate: replacementDoc.issueDate || '',
+                retrievedAt: replacementDoc.retrievedAt ? new Date(replacementDoc.retrievedAt) : undefined,
+                uploadStatus: replacementDoc.source === 'DIGILOCKER' ? 'RETRIEVED' : 'UPLOADED',
                 verificationStatus: 'NOT_REVIEWED',
                 ocrConfidence: replacementDoc.ocrConfidence || 80,
                 uploadedAt: new Date()
@@ -171,7 +204,7 @@ const resubmitCorrection = async (req, res) => {
             newStatus: Application_1.ApplicationStatus.DOC_VERIFICATION,
             changedBy: req.user.id,
             changedByRole: 'Citizen',
-            reason: 'Citizen re-uploaded corrected supporting document.',
+            reason: 'Citizen submitted corrected supporting document.',
             timestamp: new Date()
         });
         await application.save();

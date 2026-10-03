@@ -9,6 +9,7 @@ import applicationRoutes from './routes/applicationRoutes';
 import adminRoutes from './routes/adminRoutes';
 import assistantRoutes from './routes/assistantRoutes';
 import miscRoutes from './routes/miscRoutes';
+import digilockerRoutes from './routes/digilockerRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { seedDatabase } from './seed/seedData';
 import { WelfareDomain } from './models/WelfareDomain';
@@ -19,6 +20,17 @@ const app: Application = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Security Headers Middleware
+app.use((req: Request, res: Response, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  if (env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 
 // Health Check Endpoint
 app.get('/api/health', (req: Request, res: Response) => {
@@ -37,6 +49,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/misc', miscRoutes);
+app.use('/api/integrations/digilocker', digilockerRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

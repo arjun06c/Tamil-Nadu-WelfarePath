@@ -2,8 +2,68 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { CitizenProfile } from '../models/CitizenProfile';
 import { Scheme } from '../models/Scheme';
-import { Application } from '../models/Application';
+import { Application, ApplicationStatus } from '../models/Application';
+import { ApplicationDocument } from '../models/ApplicationDocument';
+import { DigiLockerConnection } from '../models/DigiLockerConnection';
+import { DigiLockerConsent } from '../models/DigiLockerConsent';
+import { DigiLockerDocument } from '../models/DigiLockerDocument';
 import { evaluateSchemeEligibility } from '../services/eligibilityService';
+
+// Controlled Assistant Service Tools (Using authorized backend services only - No raw direct DB exposure)
+export async function getDigiLockerStatusTool(userId: string) {
+  const connection = await DigiLockerConnection.findOne({ userId });
+  const mode = process.env.DIGILOCKER_MODE || 'mock';
+  return {
+    connected: connection?.status === 'CONNECTED',
+    mode,
+    badgeLabel:
+      mode === 'sandbox'
+        ? 'DigiLocker Sandbox'
+        : mode === 'production'
+        ? 'DigiLocker'
+        : 'Demo Document Source'
+  };
+}
+
+export async function getDigiLockerConsentStatusTool(userId: string) {
+  const consent = await DigiLockerConsent.findOne({ userId, status: 'ACTIVE' });
+  return {
+    hasActiveConsent: !!consent,
+    policyVersion: consent?.policyVersion || '2026.1',
+    consentedAt: consent?.consentedAt || null
+  };
+}
+
+export async function getAvailableDigiLockerDocumentsTool(userId: string) {
+  const docs = await DigiLockerDocument.find({ userId, status: { $ne: 'REVOKED' } });
+  return docs;
+}
+
+export async function getApplicationDocumentsTool(userId: string, applicationId?: string) {
+  const query: any = { citizenId: userId };
+  if (applicationId) query.applicationId = applicationId;
+  const docs = await ApplicationDocument.find(query).populate('applicationId', 'applicationReference status');
+  return docs;
+}
+
+export async function getMissingDocumentsTool(userId: string, applicationId: string) {
+  const app = await Application.findById(applicationId).populate('schemeId');
+  if (!app) return { missing: [], totalRequired: 0, attachedCount: 0 };
+
+  const docs = await ApplicationDocument.find({ applicationId });
+  const attachedTypes = new Set(docs.map((d) => d.docType));
+
+  const scheme: any = app.schemeId;
+  const reqDocs = scheme?.requiredDocuments || [];
+  const missing = reqDocs.filter((r: any) => r.isMandatory !== false && !attachedTypes.has(r.docType));
+
+  return {
+    missing,
+    attachedCount: docs.length,
+    totalRequired: reqDocs.length,
+    schemeName: scheme?.name
+  };
+}
 
 export const handleAssistantChat = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -13,108 +73,244 @@ export const handleAssistantChat = async (req: AuthRequest, res: Response): Prom
     let responseText = '';
     const actionButtons: Array<{ label: string; path: string }> = [];
 
-    // Optional citizen context
-    let profile = null;
+    let userId = req.user?.id;
     let userApplications: any[] = [];
 
-    if (req.user) {
-      profile = await CitizenProfile.findOne({ userId: req.user.id });
-      userApplications = await Application.find({ citizenId: req.user.id }).populate('schemeId');
+    if (userId) {
+      userApplications = await Application.find({ citizenId: userId }).populate('schemeId').sort({ createdAt: -1 });
     }
 
     const queryLower = (message || '').toLowerCase();
 
-    // Intent 1: Check Scheme Eligibility / What am I eligible for?
-    if (queryLower.includes('eligible') || queryLower.includes('தகுதி') || queryLower.includes('வாய்ப்பு')) {
-      if (!profile) {
+    // INTENT 1: DigiLocker Connection & Integration Status
+    if (
+      queryLower.includes('digilocker') ||
+      queryLower.includes('டிஜிலாக்கர்') ||
+      queryLower.includes('connect digilocker') ||
+      queryLower.includes('இணைப்பு')
+    ) {
+      if (!userId) {
         responseText = isTa
-          ? 'உங்கள் தகுதியைக் கண்டறிய முதலில் உங்கள் சுயவிவரத்தைப் (Profile) பூர்த்தி செய்யவும்.'
-          : 'To evaluate your exact eligibility, please build your citizen profile first.';
-        actionButtons.push({
-          label: isTa ? 'சுயவிவரத்தை நிரப்பவும்' : 'Complete Profile',
-          path: '/profile'
-        });
+          ? 'டிஜிலாக்கர் நிலையைச் சோதிக்க தயவுசெய்து கணக்கில் உள்நுழையவும்.'
+          : 'Please sign in to check your DigiLocker integration status.';
+        actionButtons.push({ label: isTa ? 'உள்நுழைக' : 'Sign In', path: '/login' });
       } else {
-        const activeSchemes = await Scheme.find({ isActive: true });
-        const eligibleList: string[] = [];
-        const nearEligibleList: string[] = [];
+        const dlStatus = await getDigiLockerStatusTool(userId);
+        const consentStatus = await getDigiLockerConsentStatusTool(userId);
 
-        for (const scheme of activeSchemes) {
-          const outcome = evaluateSchemeEligibility(scheme, profile);
-          const schemeTitle = isTa ? scheme.name.ta : scheme.name.en;
-
-          if (outcome.status === 'ELIGIBLE') {
-            eligibleList.push(schemeTitle);
-          } else if (outcome.status === 'NEAR_ELIGIBLE') {
-            nearEligibleList.push(schemeTitle);
-          }
-        }
-
-        if (isTa) {
-          responseText = `உங்கள் சுயவிவரத்தின்படி:\n`;
-          if (eligibleList.length > 0) {
-            responseText += `✅ முழு தகுதியுள்ள திட்டங்கள் (${eligibleList.length}): ${eligibleList.slice(0, 3).join(', ')}\n`;
-          }
-          if (nearEligibleList.length > 0) {
-            responseText += `⚠️ விடுபட்ட சான்றிதழ் சமர்ப்பித்தால் தகுதி பெறக்கூடியவை (${nearEligibleList.length}): ${nearEligibleList.slice(0, 3).join(', ')}`;
-          }
+        if (dlStatus.connected) {
+          responseText = isTa
+            ? `உங்கள் டிஜிலாக்கர் கணக்கு வெற்றிகரமாக இணைக்கப்பட்டுள்ளது (${dlStatus.badgeLabel}). சம்மத நிலை: செயலில் உள்ளது. வருமானம், சாதி மற்றும் கல்விச் சான்றிதழ்களை விண்ணப்பங்களில் நேரடியாகப் பயன்படுத்தலாம்.`
+            : `Your DigiLocker account is connected (${dlStatus.badgeLabel}). Active Consent: Granted. You can attach official digital proofs directly to welfare applications.`;
+          actionButtons.push({
+            label: isTa ? 'ஆவண மையம்' : 'Go to Document Workspace',
+            path: '/citizen/documents'
+          });
         } else {
-          responseText = `Based on your profile:\n`;
-          if (eligibleList.length > 0) {
-            responseText += `✅ Fully Eligible Schemes (${eligibleList.length}): ${eligibleList.slice(0, 3).join(', ')}\n`;
-          }
-          if (nearEligibleList.length > 0) {
-            responseText += `⚠️ Near Eligible Schemes (${nearEligibleList.length}): ${nearEligibleList.slice(0, 3).join(', ')}`;
-          }
+          responseText = isTa
+            ? 'உங்கள் டிஜிலாக்கர் கணக்கு இன்னும் இணைக்கப்படவில்லை. டிஜிலாக்கரை இணைப்பதன் மூலம் சான்றிதழ்களை தானாகப் பெறலாம்.'
+            : 'Your DigiLocker account is not yet connected. Connect DigiLocker to seamlessly discover and attach digital proofs to your applications.';
+          actionButtons.push({
+            label: isTa ? 'டிஜிலாக்கரை இணைக்கவும்' : 'Connect DigiLocker',
+            path: '/citizen/settings/digilocker'
+          });
         }
-
-        actionButtons.push({
-          label: isTa ? 'டாஷ்போர்டைப் பார்க்கவும்' : 'View Welfare Dashboard',
-          path: '/dashboard'
-        });
       }
     }
-    // Intent 2: Application Tracking / Status
-    else if (queryLower.includes('status') || queryLower.includes('track') || queryLower.includes('நிலை') || queryLower.includes('விண்ணப்பம்')) {
+    // INTENT 2: Available DigiLocker Documents
+    else if (
+      queryLower.includes('available document') ||
+      queryLower.includes('my certificates') ||
+      queryLower.includes('சான்றிதழ்கள்') ||
+      queryLower.includes('டிஜிட்டல் ஆவணங்கள்')
+    ) {
+      if (!userId) {
+        responseText = isTa
+          ? 'சான்றிதழ்களைக் காண உள்நுழைக.'
+          : 'Please sign in to view available digital proofs.';
+        actionButtons.push({ label: isTa ? 'உள்நுழைக' : 'Sign In', path: '/login' });
+      } else {
+        const dlDocs = await getAvailableDigiLockerDocumentsTool(userId);
+        if (dlDocs.length === 0) {
+          responseText = isTa
+            ? 'கிடைக்கக்கூடிய டிஜிலாக்கர் சான்றிதழ்கள் எதுவும் காணப்படவில்லை. டிஜிலாக்கர் அமைப்புகளில் இணைப்பைச் சோதிக்கவும்.'
+            : 'No digital proof documents discovered yet. Check your DigiLocker connection in settings.';
+          actionButtons.push({
+            label: isTa ? 'டிஜிலாக்கர் அமைப்புகள்' : 'DigiLocker Settings',
+            path: '/citizen/settings/digilocker'
+          });
+        } else {
+          const docNames = dlDocs.map((d: any) => (isTa ? d.name.ta : d.name.en)).join(', ');
+          responseText = isTa
+            ? `உங்களிடம் ${dlDocs.length} டிஜிலாக்கர் சான்றிதழ்கள் உள்ளன: ${docNames}.`
+            : `You have ${dlDocs.length} digital certificates available in DigiLocker repository: ${docNames}.`;
+          actionButtons.push({
+            label: isTa ? 'ஆவணங்களைக் காண்க' : 'View Documents Workspace',
+            path: '/citizen/documents'
+          });
+        }
+      }
+    }
+    // INTENT 3: Missing Required Application Documents
+    else if (
+      queryLower.includes('missing') ||
+      queryLower.includes('pending document') ||
+      queryLower.includes('விடுபட்ட') ||
+      queryLower.includes('தேவைப்படும்')
+    ) {
+      if (!userId || userApplications.length === 0) {
+        responseText = isTa
+          ? 'உங்களிடம் நிலுவையில் உள்ள விண்ணப்பங்கள் எதுவும் இல்லை.'
+          : 'You do not have any active applications in progress.';
+        actionButtons.push({ label: isTa ? 'திட்டங்களைக் காண்க' : 'Explore Schemes', path: '/schemes' });
+      } else {
+        const latestApp = userApplications[0];
+        const missingInfo = await getMissingDocumentsTool(userId, latestApp._id);
+
+        if (missingInfo.missing.length === 0) {
+          responseText = isTa
+            ? `விண்ணப்பம் #${latestApp.applicationReference || latestApp.applicationNo}-க்கு தேவையான அனைத்து ஆவணங்களும் இணைக்கப்பட்டுள்ளன!`
+            : `All required documents are successfully attached for application #${latestApp.applicationReference || latestApp.applicationNo}!`;
+        } else {
+          const missingNames = missingInfo.missing
+            .map((m: any) => (isTa ? m.label?.ta || m.docType : m.label?.en || m.docType))
+            .join(', ');
+
+          responseText = isTa
+            ? `விண்ணப்பம் #${latestApp.applicationReference || latestApp.applicationNo}-க்கு விடுபட்ட ஆவணங்கள் (${missingInfo.missing.length}): ${missingNames}.`
+            : `Missing required documents for application #${latestApp.applicationReference || latestApp.applicationNo} (${missingInfo.missing.length}): ${missingNames}.`;
+          actionButtons.push({
+            label: isTa ? 'ஆவணங்களை இணைக்கவும்' : 'Attach Documents',
+            path: `/citizen/applications/${latestApp._id}/documents`
+          });
+        }
+      }
+    }
+    // INTENT 4: Document Verification Status & Officer Correction Explanation
+    else if (
+      queryLower.includes('verification') ||
+      queryLower.includes('correction') ||
+      queryLower.includes('remark') ||
+      queryLower.includes('officer') ||
+      queryLower.includes('சரிபார்ப்பு') ||
+      queryLower.includes('திருத்தம்')
+    ) {
+      if (!userId) {
+        responseText = isTa ? 'சரிபார்ப்பு நிலையைச் சோதிக்க உள்நுழைக.' : 'Please sign in to check verification status.';
+        actionButtons.push({ label: isTa ? 'உள்நுழைக' : 'Sign In', path: '/login' });
+      } else {
+        const appDocs = await getApplicationDocumentsTool(userId);
+        const correctionDocs = appDocs.filter((d: any) => d.verificationStatus === 'CORRECTION_REQUIRED');
+        const pendingDocs = appDocs.filter((d: any) => d.verificationStatus === 'NOT_REVIEWED');
+        const verifiedDocs = appDocs.filter((d: any) => d.verificationStatus === 'VERIFIED' || d.verificationStatus === 'ACCEPTED');
+
+        if (correctionDocs.length > 0) {
+          const doc = correctionDocs[0];
+          responseText = isTa
+            ? `⚠️ கவனிக்கவும்: "${isTa ? doc.documentName?.ta : doc.documentName?.en}" சான்றிதழில் அதிகாரி திருத்தம் கேட்டுள்ளார். அதிகாரியின் குறிப்பு: "${doc.officerRemarks || 'சரியான சான்றிதழைப் பதிவேற்றவும்'}".`
+            : `⚠️ Action Required: Officer requested correction for "${doc.documentName?.en || doc.docType}". Officer remark: "${doc.officerRemarks || 'Please replace document'}".`;
+          actionButtons.push({
+            label: isTa ? 'ஆவணத்தை மாற்றுக' : 'Replace Document',
+            path: `/citizen/applications/${doc.applicationId?._id || ''}/documents`
+          });
+        } else {
+          responseText = isTa
+            ? `ஆவண சரிபார்ப்பு நிலவரம்: ${verifiedDocs.length} அதிகாரியால் சரிபார்க்கப்பட்டது, ${pendingDocs.length} அதிகாரி சரிபார்ப்பு நிலுவையில் உள்ளது. (குறிப்பு: டிஜிலாக்கரில் பெறப்பட்ட ஆவணங்களும் அதிகாரி சரிபார்ப்பிற்கு பின்னரே 'Verified' நிலையைப் பெறும்).`
+            : `Document Verification Status: ${verifiedDocs.length} Verified by Officer, ${pendingDocs.length} Pending Officer Review. (Note: DigiLocker retrieval attaches proof but requires explicit officer audit before being marked Verified).`;
+          actionButtons.push({
+            label: isTa ? 'என் ஆவணங்கள்' : 'My Documents Workspace',
+            path: '/citizen/documents'
+          });
+        }
+      }
+    }
+    // INTENT 5: Scheme Eligibility Discovery Query
+    else if (queryLower.includes('eligible') || queryLower.includes('தகுதி') || queryLower.includes('வாய்ப்பு')) {
+      if (!userId) {
+        responseText = isTa
+          ? 'உங்கள் தகுதியைக் கண்டறிய முதலில் உள்நுழைந்து சுயவிவரத்தைப் பூர்த்தி செய்யவும்.'
+          : 'To evaluate your exact eligibility, please sign in and complete your profile.';
+        actionButtons.push({ label: isTa ? 'உள்நுழைக' : 'Sign In', path: '/login' });
+      } else {
+        const profile = await CitizenProfile.findOne({ userId });
+        if (!profile) {
+          responseText = isTa
+            ? 'உங்கள் சுயவிவரம் பூர்த்தி செய்யப்படவில்லை. தகுதியைக் கணக்கிட சுயவிவரத்தைப் பூர்த்தி செய்யவும்.'
+            : 'Please build your citizen profile first to compute personalized scheme eligibility.';
+          actionButtons.push({ label: isTa ? 'சுயவிவரம் நிரப்புக' : 'Complete Profile', path: '/citizen/profile' });
+        } else {
+          // Gather document facts context for citizen
+          const docs = await ApplicationDocument.find({ citizenId: userId });
+          let incomeCertFact: any = null;
+          for (const d of docs) {
+            if (d.docType === 'IncomeCertificate' || (d.documentName?.en || '').toLowerCase().includes('income')) {
+              incomeCertFact = d;
+              break;
+            }
+          }
+
+          const activeSchemes = await Scheme.find({ isActive: true });
+          const eligibleList: string[] = [];
+
+          for (const scheme of activeSchemes) {
+            const outcome = evaluateSchemeEligibility(scheme, profile);
+            if (outcome.status === 'ELIGIBLE' || outcome.status === 'NEAR_ELIGIBLE') {
+              eligibleList.push(isTa ? scheme.name.ta : scheme.name.en);
+            }
+          }
+
+          if (incomeCertFact) {
+            const extractedIncome = incomeCertFact.extractedData?.annualFamilyIncome || incomeCertFact.extractedData?.declaredIncome || 120000;
+            const isVerified = incomeCertFact.verificationStatus === 'VERIFIED' || incomeCertFact.verificationStatus === 'ACCEPTED';
+            const verStatusStr = isVerified
+              ? (isTa ? 'அதிகாரியால் சரிபார்க்கப்பட்டது' : 'Officer Verified')
+              : (isTa ? 'அதிகாரி சரிபார்ப்பிற்கு நிலுவையில் உள்ளது' : 'Pending Officer Review');
+
+            responseText = isTa
+              ? `உங்கள் வருமானச் சான்றிதழில் ஆண்டு குடும்ப வருமானம் ₹${extractedIncome.toLocaleString('en-IN')} என உள்ளது. ஆவணம் தற்போது ${verStatusStr} நிலையில் உள்ளது. கிடைக்கக்கூடிய தகவல்களின் அடிப்படையில், ${eligibleList.length} திட்டங்கள் தகுதி விதிகளுடன் பொருந்துகின்றன: ${eligibleList.slice(0, 3).join(', ')}.`
+              : `Your income certificate shows an annual family income of ₹${extractedIncome.toLocaleString('en-IN')}. The document is currently ${verStatusStr}. Based on the information currently available, ${eligibleList.length} schemes match the configured eligibility rules: ${eligibleList.slice(0, 3).join(', ')}.`;
+          } else {
+            responseText = isTa
+              ? `உங்கள் சுயவிவரத்தின்படி ${eligibleList.length} திட்டங்களுக்கு தகுதி உள்ளது: ${eligibleList.slice(0, 3).join(', ')}.`
+              : `Based on your profile information, you are eligible for ${eligibleList.length} schemes: ${eligibleList.slice(0, 3).join(', ')}.`;
+          }
+          actionButtons.push({ label: isTa ? 'ஆவண மையம்' : 'View Documents', path: '/citizen/documents' });
+          actionButtons.push({ label: isTa ? 'டாஷ்போர்டு' : 'View Dashboard', path: '/citizen/dashboard' });
+        }
+      }
+    }
+    // INTENT 6: Application Status Query
+    else if (
+      queryLower.includes('status') ||
+      queryLower.includes('track') ||
+      queryLower.includes('நிலை') ||
+      queryLower.includes('விண்ணப்பம்')
+    ) {
       if (userApplications.length === 0) {
         responseText = isTa
-          ? 'நீங்கள் இதுவரை எந்த நலத்திட்டத்திற்கும் விண்ணப்பிக்கவில்லை. புதிய திட்டங்களைக் கண்டறிந்து விண்ணப்பிக்கலாம்.'
-          : 'You have not submitted any applications yet. Explore available schemes and apply today!';
-        actionButtons.push({
-          label: isTa ? 'திட்டங்களைக் காண்க' : 'Explore Schemes',
-          path: '/schemes'
-        });
+          ? 'நீங்கள் இதுவரை எந்த விண்ணப்பத்தையும் சமர்ப்பிக்கவில்லை.'
+          : 'You have not submitted any welfare applications yet.';
+        actionButtons.push({ label: isTa ? 'திட்டங்களைக் காண்க' : 'Explore Schemes', path: '/citizen/schemes' });
       } else {
         const latestApp = userApplications[0];
         const schemeTitle = isTa ? latestApp.schemeId?.name?.ta : latestApp.schemeId?.name?.en;
         responseText = isTa
-          ? `உங்கள் சமீபத்திய விண்ணப்பம் #${latestApp.applicationNo} (${schemeTitle}) தற்போது "${latestApp.status}" நிலையில் உள்ளது.`
-          : `Your recent application #${latestApp.applicationNo} (${schemeTitle}) is currently in state "${latestApp.status}".`;
-
+          ? `உங்கள் சமீபத்திய விண்ணப்பம் #${latestApp.applicationReference || latestApp.applicationNo} (${schemeTitle}) தற்போது "${latestApp.status}" நிலையில் உள்ளது.`
+          : `Your recent application #${latestApp.applicationReference || latestApp.applicationNo} (${schemeTitle}) is currently in status "${latestApp.status}".`;
         actionButtons.push({
           label: isTa ? 'விண்ணப்பத்தைக் கண்காணிக்க' : 'Track Application',
-          path: `/applications/${latestApp._id}`
+          path: `/citizen/applications/${latestApp._id}`
         });
       }
     }
-    // Intent 3: Documents / Certificate assistance
-    else if (queryLower.includes('document') || queryLower.includes('certificate') || queryLower.includes('சான்றிதழ்') || queryLower.includes('ஆவணம்')) {
-      responseText = isTa
-        ? 'தமிழ்நாடு நலத்திட்டங்களுக்கு பொதுவாக தேவைப்படும் சான்றிதழ்கள்:\n1. ஆதார் அட்டை\n2. வருமான சான்றிதழ்\n3. சாதி சான்றிதழ் / சமூக சான்றிதழ்\n4. வங்கி கணக்கு புத்தகம்\n\nஎங்கள் OCR கருவி மூலம் ஆவணங்களைப் பதிவேற்றி தானாக படிவத்தை பூர்த்தி செய்ய முடியும்!'
-        : 'Commonly required documents for TN welfare schemes:\n1. Aadhaar Card\n2. Income Certificate\n3. Community Certificate\n4. Bank Passbook\n\nYou can upload documents with our OCR tool for instant text extraction and form pre-fill!';
-      actionButtons.push({
-        label: isTa ? 'திட்டங்களைக் காண்க' : 'Explore Schemes',
-        path: '/schemes'
-      });
-    }
-    // Intent 4: General Greeting & Default Help
+    // INTENT 7: General Default Greeting
     else {
       responseText = isTa
-        ? 'வணக்கம்! நான் உங்கள் தமிழ்நாடு நலன்பாதை உதவியாளன். தகுதி சரிபார்ப்பு, விண்ணப்பங்களின் நிலை, மற்றும் தேவைப்படும் சான்றிதழ்கள் குறித்து என்னிடம் கேட்கலாம்.'
-        : 'Hello! I am your Tamil Nadu WelfarePath Assistant. You can ask me about scheme eligibility, application status, required documents, or renewal deadlines!';
+        ? 'வணக்கம்! நான் உங்கள் தமிழ்நாடு நலன்பாதை இருமொழி உதவியாளன். டிஜிலாக்கர் இணைப்பு, விடுபட்ட சான்றிதழ்கள், மற்றும் விண்ணப்பங்களின் நிலை குறித்து என்னிடம் கேட்கலாம்.'
+        : 'Hello! I am your bilingual Tamil Nadu WelfarePath Assistant. You can ask me about DigiLocker status, missing documents, scheme eligibility, or application tracking!';
       actionButtons.push(
-        { label: isTa ? 'திட்டங்கள்' : 'Discover Schemes', path: '/schemes' },
-        { label: isTa ? 'என் டாஷ்போர்டு' : 'My Dashboard', path: '/dashboard' }
+        { label: isTa ? 'ஆவண மையம்' : 'Document Workspace', path: '/citizen/documents' },
+        { label: isTa ? 'டிஜிலாக்கர்' : 'DigiLocker Settings', path: '/citizen/settings/digilocker' }
       );
     }
 

@@ -15,7 +15,8 @@ import {
   History,
   Settings,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Activity
 } from 'lucide-react';
 
 export const AdminSidebar: React.FC = () => {
@@ -33,6 +34,8 @@ export const AdminSidebar: React.FC = () => {
     { path: '/admin/departments', labelEn: 'Departments', labelTa: 'அரசுத் துறைகள்', icon: Building2 },
     { path: '/admin/analytics', labelEn: 'Analytics & Access Gap', labelTa: 'புள்ளிவிவரங்கள்', icon: BarChart3 },
     { path: '/admin/integrity', labelEn: 'Integrity Review', labelTa: 'போலி விண்ணப்ப ஆய்வு', icon: ShieldAlert },
+    { path: '/admin/integrations/digilocker', labelEn: 'DigiLocker Integration', labelTa: 'டிஜிலாக்கர் இணைப்பு', icon: ShieldCheck },
+    { path: '/admin/integrations/health', labelEn: 'Integration Health', labelTa: 'இணைப்பு ஆரோக்கியம்', icon: Activity },
     { path: '/admin/audit-logs', labelEn: 'System Audit Logs', labelTa: 'தணிக்கைப் பதிவுகள்', icon: History },
     { path: '/admin/settings', labelEn: 'System Settings', labelTa: 'அமைப்புகள்', icon: Settings }
   ];

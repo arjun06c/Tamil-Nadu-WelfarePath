@@ -2,9 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const applicationController_1 = require("../controllers/applicationController");
+const digilockerController_1 = require("../controllers/digilockerController");
 const authMiddleware_1 = require("../middleware/authMiddleware");
+const rateLimiter_1 = require("../middleware/rateLimiter");
+const digilockerValidators_1 = require("../validators/digilockerValidators");
 const router = (0, express_1.Router)();
 router.post('/submit', authMiddleware_1.authenticateJWT, applicationController_1.submitApplication);
+router.post('/', authMiddleware_1.authenticateJWT, applicationController_1.submitApplication);
 router.get('/my-portfolio', authMiddleware_1.authenticateJWT, applicationController_1.getMyApplications);
+router.get('/my-documents', authMiddleware_1.authenticateJWT, applicationController_1.getMyDocuments);
 router.get('/:id', authMiddleware_1.authenticateJWT, applicationController_1.getApplicationById);
+router.post('/:id/correction', authMiddleware_1.authenticateJWT, applicationController_1.resubmitCorrection);
+router.post('/:applicationId/documents/from-digilocker', authMiddleware_1.authenticateJWT, (0, digilockerValidators_1.validateMongoIdParam)('applicationId'), (0, digilockerValidators_1.validateBody)(digilockerValidators_1.attachDocumentValidationSchema), rateLimiter_1.digilockerRetrievalLimiter, digilockerController_1.attachDigiLockerDocumentToApplication);
 exports.default = router;

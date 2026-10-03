@@ -14,6 +14,7 @@ const applicationRoutes_1 = __importDefault(require("./routes/applicationRoutes"
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const assistantRoutes_1 = __importDefault(require("./routes/assistantRoutes"));
 const miscRoutes_1 = __importDefault(require("./routes/miscRoutes"));
+const digilockerRoutes_1 = __importDefault(require("./routes/digilockerRoutes"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const seedData_1 = require("./seed/seedData");
 const WelfareDomain_1 = require("./models/WelfareDomain");
@@ -22,6 +23,16 @@ const app = (0, express_1.default)();
 app.use((0, cors_1.default)({ origin: true, credentials: true }));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
+// Security Headers Middleware
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    if (env_1.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+});
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
     res.status(200).json({
@@ -38,6 +49,7 @@ app.use('/api/applications', applicationRoutes_1.default);
 app.use('/api/admin', adminRoutes_1.default);
 app.use('/api/assistant', assistantRoutes_1.default);
 app.use('/api/misc', miscRoutes_1.default);
+app.use('/api/integrations/digilocker', digilockerRoutes_1.default);
 // Global Error Handler
 app.use(errorHandler_1.errorHandler);
 // Connect Database & Start Server

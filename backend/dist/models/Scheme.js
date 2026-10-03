@@ -73,7 +73,8 @@ const SchemeSchema = new mongoose_1.Schema({
             },
             acceptedFileTypes: [{ type: String, default: ['PDF', 'JPG', 'PNG'] }],
             maxFileSizeMB: { type: Number, default: 5 },
-            ocrSupported: { type: Boolean, default: true }
+            ocrSupported: { type: Boolean, default: true },
+            sources: [{ type: String, enum: ['DIGILOCKER', 'MANUAL_UPLOAD'], default: ['DIGILOCKER', 'MANUAL_UPLOAD'] }]
         }
     ],
     applicationMethods: [

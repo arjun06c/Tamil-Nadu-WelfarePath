@@ -1,6 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Globe, Settings, User } from 'lucide-react';
+import { Globe, Settings, User, ShieldCheck } from 'lucide-react';
 
 export const CitizenSettingsPage: React.FC = () => {
   const { user, lang, toggleLanguage } = useAuth();
@@ -64,6 +65,26 @@ export const CitizenSettingsPage: React.FC = () => {
               <span className="font-bold text-blue-900">{user?.role}</span>
             </div>
           </div>
+        </div>
+
+        {/* DigiLocker Integration Settings Card */}
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-teal-700" />
+              <span>{isTa ? 'டிஜிலாக்கர் இணைப்பு மேலாண்மை' : 'DigiLocker Integration'}</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isTa ? 'அரசு டிஜிலாக்கர் கணக்கை இணைக்கவும், ஆவண சம்மதத்தை நிர்வகிக்கவும்' : 'Manage your official DigiLocker connection, permissions, and document sources'}
+            </p>
+          </div>
+
+          <Link
+            to="/citizen/settings/digilocker"
+            className="px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition-colors flex items-center space-x-1"
+          >
+            <span>{isTa ? 'டிஜிலாக்கரை நிர்வகி' : 'Manage DigiLocker'}</span>
+          </Link>
         </div>
 
       </div>

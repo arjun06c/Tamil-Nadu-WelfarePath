@@ -212,27 +212,54 @@ export const ApplicationTrackingPage: React.FC = () => {
       )}
 
       {/* Submitted Documents & OCR Text List */}
-      <div className="glass-card p-6 rounded-2xl">
-        <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center space-x-2">
+      <div className="glass-card p-6 rounded-2xl space-y-4">
+        <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center space-x-2">
           <FileText className="w-4 h-4 text-blue-900" />
-          <span>{isTa ? 'சமர்ப்பிக்கப்பட்ட சான்றிதழ்கள் (Uploaded Proofs)' : 'Uploaded Supporting Documents & OCR Records'}</span>
+          <span>{isTa ? 'சமர்ப்பிக்கப்பட்ட சான்றிதழ்கள் & மூலங்கள்' : 'Submitted Documents & Source Provenance'}</span>
         </h3>
 
         {documents.length === 0 ? (
           <div className="text-xs text-slate-400 italic">No document files attached.</div>
         ) : (
           <div className="space-y-3">
-            {documents.map((doc: any) => (
-              <div key={doc._id} className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs">
-                <div className="flex items-center justify-between font-bold text-slate-800 mb-1">
-                  <span>{doc.docType} ({doc.fileName})</span>
-                  <span className="text-emerald-700">OCR Confidence: {doc.ocrConfidence}%</span>
+            {documents.map((doc: any) => {
+              const isDigiLocker = doc.source === 'DIGILOCKER';
+
+              return (
+                <div key={doc._id} className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs space-y-2">
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span className="flex items-center space-x-2">
+                      <span>{doc.docType} ({doc.fileName})</span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded font-extrabold border ${
+                          isDigiLocker
+                            ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                            : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                        }`}
+                      >
+                        {isDigiLocker ? 'Source: DigiLocker' : 'Source: Manual Upload'}
+                      </span>
+                    </span>
+
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
+                      {doc.verificationStatus === 'ACCEPTED' || doc.verificationStatus === 'VERIFIED'
+                        ? (isTa ? 'அதிகாரியால் சரிபார்க்கப்பட்டது' : 'Officer Verified')
+                        : (isTa ? 'அதிகாரி சரிபார்ப்பு நிலுவையில் உள்ளது' : 'Pending Officer Review')}
+                    </span>
+                  </div>
+
+                  {doc.issuer && (
+                    <div className="text-[11px] text-slate-600">
+                      Issuer: {doc.issuer} {doc.issueDate ? `(Issued: ${doc.issueDate})` : ''}
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-slate-500 font-mono bg-white p-2 rounded border border-slate-100 line-clamp-2">
+                    {doc.extractedData?.text || doc.ocrText || 'Document metadata attached.'}
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500 font-mono bg-white p-2 rounded border border-slate-100 line-clamp-2">
-                  {doc.ocrText || 'Document OCR scan text available.'}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -30,6 +30,7 @@ export interface IRequiredDocumentConfig {
   acceptedFileTypes?: string[];
   maxFileSizeMB?: number;
   ocrSupported?: boolean;
+  sources?: ('DIGILOCKER' | 'MANUAL_UPLOAD')[];
 }
 
 export interface IApplicationMethod {
@@ -123,7 +124,8 @@ const SchemeSchema: Schema = new Schema(
         },
         acceptedFileTypes: [{ type: String, default: ['PDF', 'JPG', 'PNG'] }],
         maxFileSizeMB: { type: Number, default: 5 },
-        ocrSupported: { type: Boolean, default: true }
+        ocrSupported: { type: Boolean, default: true },
+        sources: [{ type: String, enum: ['DIGILOCKER', 'MANUAL_UPLOAD'], default: ['DIGILOCKER', 'MANUAL_UPLOAD'] }]
       }
     ],
     applicationMethods: [

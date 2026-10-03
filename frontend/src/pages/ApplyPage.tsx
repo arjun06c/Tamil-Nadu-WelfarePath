@@ -24,6 +24,9 @@ import {
   Info,
   Check
 } from 'lucide-react';
+import { DocumentSourceSelector } from '../components/digilocker/DocumentSourceSelector';
+import { DigiLockerDocumentPicker, type AvailableDocument } from '../components/digilocker/DigiLockerDocumentPicker';
+import { DigiLockerConsentModal } from '../components/digilocker/DigiLockerConsentModal';
 
 export const ApplyPage: React.FC = () => {
   const { schemeId } = useParams<{ schemeId: string }>();
@@ -63,9 +66,72 @@ export const ApplyPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submittedApplication, setSubmittedApplication] = useState<any>(null);
 
+  // DigiLocker State
+  const [digilockerStatus, setDigilockerStatus] = useState<any>(null);
+  const [availableDocs, setAvailableDocs] = useState<AvailableDocument[]>([]);
+  const [pickerDocType, setPickerDocType] = useState<string | null>(null);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
   useEffect(() => {
     fetchScheme();
+    fetchDigiLockerStatus();
   }, [schemeId]);
+
+  const fetchDigiLockerStatus = async () => {
+    try {
+      const res = await api.get('/integrations/digilocker/status');
+      setDigilockerStatus(res.data);
+      if (res.data.connected) {
+        const docRes = await api.get('/integrations/digilocker/documents');
+        setAvailableDocs(docRes.data.documents || []);
+      }
+    } catch (err) {
+      console.error('Fetch DigiLocker status error:', err);
+    }
+  };
+
+  const handleSelectDigiLockerDoc = (dlDoc: AvailableDocument) => {
+    if (!pickerDocType) return;
+    const newDoc = {
+      docType: pickerDocType,
+      fileName: `${dlDoc.documentType}.pdf`,
+      fileUrl: `https://via.placeholder.com/800x1100.png?text=DigiLocker+${dlDoc.documentType}`,
+      fileSize: 2048,
+      mimeType: dlDoc.mimeType || 'application/pdf',
+      source: 'DIGILOCKER',
+      sourceReference: dlDoc.sourceReference,
+      issuer: dlDoc.issuer,
+      issueDate: dlDoc.issueDate,
+      ocrText: `DIGILOCKER VERIFIED DOCUMENT METADATA:\nType: ${dlDoc.documentType}\nIssuer: ${dlDoc.issuer}\nURI: ${dlDoc.sourceReference}`,
+      ocrConfidence: 95,
+      extractedData: { issuer: dlDoc.issuer, source: 'DIGILOCKER' },
+      citizenConfirmedData: { source: 'DIGILOCKER' },
+      isConfirmed: true
+    };
+
+    setUploadedDocs((prev) => [...prev.filter((d) => d.docType !== pickerDocType), newDoc]);
+    setPickerDocType(null);
+  };
+
+  const handleConnectDigiLockerInWizard = async () => {
+    setConnecting(true);
+    try {
+      await api.post('/integrations/digilocker/consent', {
+        purpose: 'Welfare application document attachment',
+        requestedScopes: ['doc_type'],
+        grantedScopes: ['doc_type']
+      });
+      const connectRes = await api.get('/integrations/digilocker/connect');
+      await api.get(`/integrations/digilocker/callback?code=mock_code_grant&state=${encodeURIComponent(connectRes.data.state)}`);
+      setShowConsentModal(false);
+      await fetchDigiLockerStatus();
+    } catch (err) {
+      console.error('Connect DigiLocker error:', err);
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   const fetchScheme = async () => {
     try {
@@ -347,82 +413,70 @@ export const ApplyPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
               <FileUp className="w-5 h-5 text-blue-900" />
-              <span>{isTa ? '2. தேவைப்படும் சான்றிதழ்கள் பதிவேற்றம்' : '2. Upload Required Documents'}</span>
+              <span>{isTa ? '2. தேவைப்படும் சான்றிதழ்கள் (மூலம் தேர்வு)' : '2. Required Document Source Selection'}</span>
             </h2>
             <span className="text-[11px] text-slate-500">
-              Accepted: PDF, JPG, PNG (Max 5MB)
+              Option A: Manual Upload | Option B: Fetch DigiLocker
             </span>
           </div>
+
+          {/* DigiLocker Picker Modal inside Step 2 */}
+          {pickerDocType && (
+            <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-blue-900 text-xs">
+                  {isTa ? `டிஜிலாக்கரில் இருந்து சான்றிதழ் தேர்வு (${pickerDocType})` : `Select DigiLocker Document for ${pickerDocType}`}
+                </span>
+                <button
+                  onClick={() => setPickerDocType(null)}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-900"
+                >
+                  {isTa ? 'மூடுக' : 'Close'}
+                </button>
+              </div>
+
+              <DigiLockerDocumentPicker
+                documents={availableDocs}
+                onSelectDocument={handleSelectDigiLockerDoc}
+                filterDocType={pickerDocType}
+                mode={digilockerStatus?.mode || 'mock'}
+                badgeLabel={digilockerStatus?.badgeLabel}
+              />
+            </div>
+          )}
 
           <div className="space-y-4">
             {scheme.requiredDocuments?.map((doc: any, idx: number) => {
               const uploaded = uploadedDocs.find((d) => d.docType === doc.docType);
-              const docLabel = isTa ? doc.label?.ta : doc.label?.en;
-              const isScanning = ocrProcessingDoc === doc.docType;
 
               return (
-                <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-xs text-slate-900">{docLabel}</span>
-                        {doc.isMandatory ? (
-                          <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
-                            {isTa ? 'கட்டாயம்' : 'Mandatory'}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
-                            {isTa ? 'விருப்பத் தேர்வு' : 'Optional'}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-slate-500 block mt-0.5">
-                        Category code: {doc.docType}
-                      </span>
-                    </div>
-
-                    <label className="cursor-pointer px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5 w-fit">
-                      <FileUp className="w-3.5 h-3.5" />
-                      <span>
-                        {uploaded
-                          ? isTa
-                            ? 'மாற்றிப் பதிவேற்று'
-                            : 'Replace Document'
-                          : isTa
-                          ? 'கோப்பைத் தேர்ந்தெடு'
-                          : 'Select File'}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, doc.docType)}
-                      />
-                    </label>
-                  </div>
-
-                  {isScanning && (
-                    <div className="mt-3 p-3 bg-teal-50 border border-teal-200 text-teal-900 text-xs rounded-xl flex items-center space-x-2">
-                      <Scan className="w-4 h-4 text-teal-600 animate-spin" />
-                      <span>{isTa ? 'Tesseract.js OCR ஆவணத்தைப் படிக்கிறது...' : 'Running Tesseract.js OCR scanner on uploaded document...'}</span>
-                    </div>
-                  )}
-
-                  {uploaded && !isScanning && (
-                    <div className="mt-3 bg-white p-3 rounded-lg border border-slate-200 text-xs flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span className="font-semibold text-slate-800">{uploaded.fileName}</span>
-                      </div>
-                      <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
-                        OCR Confidence: {uploaded.ocrConfidence}%
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <DocumentSourceSelector
+                  key={idx}
+                  docType={doc.docType}
+                  label={doc.label || { en: doc.docType, ta: doc.docType }}
+                  isMandatory={doc.isMandatory !== false}
+                  isConnected={!!digilockerStatus?.connected}
+                  activeMode={digilockerStatus?.mode || 'mock'}
+                  badgeLabel={digilockerStatus?.badgeLabel}
+                  attachedDoc={uploaded}
+                  onSelectDigiLocker={() => setPickerDocType(doc.docType)}
+                  onConnectDigiLocker={() => setShowConsentModal(true)}
+                  onManualUpload={(e) => handleFileUpload(e, doc.docType)}
+                  isProcessing={ocrProcessingDoc === doc.docType}
+                />
               );
             })}
           </div>
+
+          {/* Consent Modal Popup */}
+          <DigiLockerConsentModal
+            isOpen={showConsentModal}
+            onClose={() => setShowConsentModal(false)}
+            onConfirmConsent={handleConnectDigiLockerInWizard}
+            mode={digilockerStatus?.mode || 'mock'}
+            badgeLabel={digilockerStatus?.badgeLabel}
+            loading={connecting}
+          />
 
           <div className="flex items-center justify-between pt-4">
             <button

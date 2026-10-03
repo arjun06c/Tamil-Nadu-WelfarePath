@@ -32,6 +32,8 @@ import { FullAssistantPage } from './pages/citizen/FullAssistantPage';
 import { SavedSchemesPage } from './pages/citizen/SavedSchemesPage';
 import { NotificationsPage } from './pages/citizen/NotificationsPage';
 import { CitizenSettingsPage } from './pages/citizen/CitizenSettingsPage';
+import { DigiLockerConnectPage } from './pages/citizen/DigiLockerConnectPage';
+import { ApplicationDocumentsPage } from './pages/citizen/ApplicationDocumentsPage';
 import { ApplyPage } from './pages/ApplyPage';
 
 // Officer Workspace Pages
@@ -54,6 +56,8 @@ import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
 import { AdminIntegrityPage } from './pages/admin/AdminIntegrityPage';
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
+import { AdminDigiLockerMonitoringPage } from './pages/admin/AdminDigiLockerMonitoringPage';
+import { AdminIntegrationHealthPage } from './pages/admin/AdminIntegrationHealthPage';
 
 export const App: React.FC = () => {
   return (
@@ -92,12 +96,14 @@ export const App: React.FC = () => {
             <Route path="portfolio" element={<DashboardPage />} />
             <Route path="applications" element={<MyApplicationsPage />} />
             <Route path="applications/:id" element={<ApplicationTrackingPage />} />
+            <Route path="applications/:id/documents" element={<ApplicationDocumentsPage />} />
             <Route path="benefits" element={<MyBenefitsPage />} />
             <Route path="documents" element={<DocumentCenterPage />} />
             <Route path="assistant" element={<FullAssistantPage />} />
             <Route path="saved-schemes" element={<SavedSchemesPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="settings" element={<CitizenSettingsPage />} />
+            <Route path="settings/digilocker" element={<DigiLockerConnectPage />} />
           </Route>
 
           {/* Protected Officer Workspace */}
@@ -141,6 +147,8 @@ export const App: React.FC = () => {
             <Route path="departments" element={<AdminDepartmentPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
             <Route path="integrity" element={<AdminIntegrityPage />} />
+            <Route path="integrations/digilocker" element={<AdminDigiLockerMonitoringPage />} />
+            <Route path="integrations/health" element={<AdminIntegrationHealthPage />} />
             <Route path="audit-logs" element={<AdminAuditLogsPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
           </Route>

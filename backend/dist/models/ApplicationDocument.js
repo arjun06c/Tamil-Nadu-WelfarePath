@@ -47,9 +47,21 @@ const ApplicationDocumentSchema = new mongoose_1.Schema({
     fileUrl: { type: String, required: true },
     fileSize: { type: Number, default: 1024 },
     mimeType: { type: String, default: 'application/pdf' },
+    source: {
+        type: String,
+        enum: ['MANUAL_UPLOAD', 'DIGILOCKER'],
+        default: 'MANUAL_UPLOAD'
+    },
+    sourceReference: { type: String, default: '' },
+    storageReference: { type: String, default: '' },
+    issuer: { type: String, default: '' },
+    issueDate: { type: String, default: '' },
+    retrievedAt: { type: Date },
+    verifiedAt: { type: Date },
+    verifiedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
     uploadStatus: {
         type: String,
-        enum: ['NOT_UPLOADED', 'UPLOADING', 'UPLOADED', 'PROCESSING', 'OCR_COMPLETED', 'CORRECTION_REQUIRED', 'REJECTED', 'UPLOAD_FAILED'],
+        enum: ['NOT_UPLOADED', 'UPLOADING', 'UPLOADED', 'RETRIEVED', 'PROCESSING', 'OCR_COMPLETED', 'CORRECTION_REQUIRED', 'REJECTED', 'UPLOAD_FAILED'],
         default: 'UPLOADED'
     },
     ocrStatus: {

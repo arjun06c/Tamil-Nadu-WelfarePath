@@ -62,6 +62,33 @@ const resources = {
         officerReview: 'OFFICER REVIEW',
         approved: 'APPROVED',
         rejected: 'REJECTED'
+      },
+      digilocker: {
+        title: 'DigiLocker Integration',
+        subtitle: 'Securely fetch and verify digital documents directly from official government repositories.',
+        connectBtn: 'Connect DigiLocker',
+        disconnectBtn: 'Disconnect Integration',
+        statusConnected: 'Connected',
+        statusNotConnected: 'Not Connected',
+        statusDisconnected: 'Disconnected',
+        demoBadge: 'Demo Document Source',
+        sandboxBadge: 'DigiLocker Sandbox',
+        prodBadge: 'DigiLocker',
+        fetchFromDigiLocker: 'Fetch from DigiLocker',
+        uploadManually: 'Upload Manually',
+        chooseSource: 'Choose Document Source',
+        availableDocs: 'Available Digital Documents',
+        selectDoc: 'Use This Document',
+        selected: 'Selected',
+        retrieved: 'Retrieved from DigiLocker',
+        verificationPending: 'Pending Officer Review',
+        verified: 'Officer Verified',
+        correctionRequired: 'Correction Required',
+        consentTitle: 'Citizen Data Access Consent',
+        consentPurpose: 'Welfare Application Document Verification',
+        continueConsent: 'Continue with DigiLocker',
+        cancelConsent: 'Cancel',
+        privacyNotice: 'Your privacy is protected. WelfarePath only requests access to documents required for your specific application purpose.'
       }
     }
   },
@@ -124,6 +151,33 @@ const resources = {
         officerReview: 'அதிகாரி பரிசீலனை',
         approved: 'அங்கீகரிக்கப்பட்டது',
         rejected: 'நிராகரிக்கப்பட்டது'
+      },
+      digilocker: {
+        title: 'டிஜிலாக்கர் இணைப்பு',
+        subtitle: 'அதிகாரப்பூர்வ அரசு களஞ்சியங்களிலிருந்து உங்களது டிஜிட்டல் சான்றிதழ்களை பாதுகாப்பாகப் பெறவும்.',
+        connectBtn: 'டிஜிலாக்கரை இணைக்கவும்',
+        disconnectBtn: 'இணைப்பைத் துண்டிக்கவும்',
+        statusConnected: 'இணைக்கப்பட்டுள்ளது',
+        statusNotConnected: 'இணைக்கப்படவில்லை',
+        statusDisconnected: 'துண்டிக்கப்பட்டது',
+        demoBadge: 'டெமோ ஆவண ஆதாரம்',
+        sandboxBadge: 'டிஜிலாக்கர் பரிசோதனை களம்',
+        prodBadge: 'டிஜிலாக்கர்',
+        fetchFromDigiLocker: 'டிஜிலாக்கரில் இருந்து பெறவும்',
+        uploadManually: 'கைமுறையாக பதிவேற்றவும்',
+        chooseSource: 'ஆவண மூலத்தைத் தேர்ந்தெடுக்கவும்',
+        availableDocs: 'கிடைக்கக்கூடிய டிஜிட்டல் ஆவணங்கள்',
+        selectDoc: 'இந்த ஆவணத்தைப் பயன்படுத்தவும்',
+        selected: 'தேர்ந்தெடுக்கப்பட்டது',
+        retrieved: 'டிஜிலாக்கரில் இருந்து பெறப்பட்டது',
+        verificationPending: 'அதிகாரி சரிபார்ப்பு நிலுவையில் உள்ளது',
+        verified: 'அதிகாரியால் சரிபார்க்கப்பட்டது',
+        correctionRequired: 'திருத்தம் தேவை',
+        consentTitle: 'குடிமக்களின் ஆவண அணுகல் சம்மதம்',
+        consentPurpose: 'நலத்திட்ட விண்ணப்ப ஆவண சரிபார்ப்பு',
+        continueConsent: 'டிஜிலாக்கருடன் தொடரவும்',
+        cancelConsent: 'ரத்து செய்',
+        privacyNotice: 'உங்கள் தனியுரிமை பாதுகாக்கப்படுகிறது. உங்கள் விண்ணப்பத்திற்கு தேவையான ஆவணங்களை மட்டுமே நலன்பாதை பெறுகிறது.'
       }
     }
   }

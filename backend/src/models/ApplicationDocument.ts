@@ -12,11 +12,19 @@ export interface IApplicationDocument extends Document {
   fileUrl: string;
   fileSize: number;
   mimeType: string;
-  uploadStatus: 'NOT_UPLOADED' | 'UPLOADING' | 'UPLOADED' | 'PROCESSING' | 'OCR_COMPLETED' | 'CORRECTION_REQUIRED' | 'REJECTED' | 'UPLOAD_FAILED';
+  uploadStatus: 'NOT_UPLOADED' | 'UPLOADING' | 'UPLOADED' | 'RETRIEVED' | 'PROCESSING' | 'OCR_COMPLETED' | 'CORRECTION_REQUIRED' | 'REJECTED' | 'UPLOAD_FAILED';
   ocrStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'BYPASSED';
   ocrConfidence?: number;
   extractedData?: Record<string, any>;
   citizenConfirmedData?: Record<string, any>;
+  source?: 'MANUAL_UPLOAD' | 'DIGILOCKER';
+  sourceReference?: string;
+  storageReference?: string;
+  issuer?: string;
+  issueDate?: string;
+  retrievedAt?: Date;
+  verifiedAt?: Date;
+  verifiedBy?: mongoose.Types.ObjectId;
   verificationStatus: 'NOT_REVIEWED' | 'ACCEPTED' | 'CORRECTION_REQUIRED' | 'REJECTED' | 'VERIFIED';
   officerRemarks?: string;
   uploadedAt: Date;
@@ -35,9 +43,21 @@ const ApplicationDocumentSchema: Schema = new Schema(
     fileUrl: { type: String, required: true },
     fileSize: { type: Number, default: 1024 },
     mimeType: { type: String, default: 'application/pdf' },
+    source: {
+      type: String,
+      enum: ['MANUAL_UPLOAD', 'DIGILOCKER'],
+      default: 'MANUAL_UPLOAD'
+    },
+    sourceReference: { type: String, default: '' },
+    storageReference: { type: String, default: '' },
+    issuer: { type: String, default: '' },
+    issueDate: { type: String, default: '' },
+    retrievedAt: { type: Date },
+    verifiedAt: { type: Date },
+    verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     uploadStatus: {
       type: String,
-      enum: ['NOT_UPLOADED', 'UPLOADING', 'UPLOADED', 'PROCESSING', 'OCR_COMPLETED', 'CORRECTION_REQUIRED', 'REJECTED', 'UPLOAD_FAILED'],
+      enum: ['NOT_UPLOADED', 'UPLOADING', 'UPLOADED', 'RETRIEVED', 'PROCESSING', 'OCR_COMPLETED', 'CORRECTION_REQUIRED', 'REJECTED', 'UPLOAD_FAILED'],
       default: 'UPLOADED'
     },
     ocrStatus: {
