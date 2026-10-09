@@ -39,13 +39,13 @@ export const DigiLockerModeBadge: React.FC<DigiLockerModeBadgeProps> = ({
     );
   }
 
-  // Default fallback: MOCK mode (Demo Document Source)
+  // Default fallback: MOCK mode (Simulation Mode)
   return (
     <span
       className={`inline-flex items-center space-x-1.5 px-3 py-1 text-xs font-bold rounded-full bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs ${className}`}
     >
       <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-      <span>{badgeLabel || (isTa ? 'டெமோ ஆவண ஆதாரம்' : 'Demo Document Source')}</span>
+      <span>{badgeLabel || (isTa ? 'சிமுலேஷன் முறை' : 'Simulation Mode')}</span>
     </span>
   );
 };

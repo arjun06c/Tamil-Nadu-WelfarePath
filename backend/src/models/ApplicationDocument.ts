@@ -27,6 +27,17 @@ export interface IApplicationDocument extends Document {
   verifiedBy?: mongoose.Types.ObjectId;
   verificationStatus: 'NOT_REVIEWED' | 'ACCEPTED' | 'CORRECTION_REQUIRED' | 'REJECTED' | 'VERIFIED';
   officerRemarks?: string;
+  version?: number;
+  previousVersionId?: mongoose.Types.ObjectId;
+  isCurrentVersion?: boolean;
+  correctionReason?: string;
+  correctionRequestedAt?: Date;
+  correctionRequestedBy?: mongoose.Types.ObjectId;
+  rejectionReason?: string;
+  rejectedAt?: Date;
+  rejectedBy?: mongoose.Types.ObjectId;
+  resubmittedAt?: Date;
+  resubmittedBy?: mongoose.Types.ObjectId;
   uploadedAt: Date;
 }
 
@@ -74,6 +85,17 @@ const ApplicationDocumentSchema: Schema = new Schema(
       default: 'NOT_REVIEWED'
     },
     officerRemarks: { type: String, default: '' },
+    version: { type: Number, default: 1 },
+    previousVersionId: { type: Schema.Types.ObjectId, ref: 'ApplicationDocument' },
+    isCurrentVersion: { type: Boolean, default: true },
+    correctionReason: { type: String, default: '' },
+    correctionRequestedAt: { type: Date },
+    correctionRequestedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    rejectionReason: { type: String, default: '' },
+    rejectedAt: { type: Date },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    resubmittedAt: { type: Date },
+    resubmittedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     uploadedAt: { type: Date, default: Date.now }
   },
   { timestamps: true }

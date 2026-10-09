@@ -71,7 +71,7 @@ const startConnection = async (req, res) => {
             authorizationUrl,
             state,
             mode: provider.getMode(),
-            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : 'DigiLocker'
+            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : provider.getMode() === 'sandbox' ? 'DigiLocker Sandbox' : 'DigiLocker'
         });
     }
     catch (error) {
@@ -174,7 +174,7 @@ const handleOAuthCallback = async (req, res) => {
             success: true,
             message: 'DigiLocker authorization completed successfully',
             mode: provider.getMode(),
-            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : 'DigiLocker',
+            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : provider.getMode() === 'sandbox' ? 'DigiLocker Sandbox' : 'DigiLocker',
             user: authResult.user
         });
     }
@@ -295,7 +295,7 @@ const getAvailableDocuments = async (req, res) => {
                 metadata: {
                     description: item.description,
                     providerMode: provider.getMode(),
-                    badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : 'DigiLocker'
+                    badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : provider.getMode() === 'sandbox' ? 'DigiLocker Sandbox' : 'DigiLocker'
                 }
             }, { upsert: true, new: true });
             normalizedDocs.push({
@@ -322,7 +322,7 @@ const getAvailableDocuments = async (req, res) => {
         res.status(200).json({
             documents: normalizedDocs,
             count: normalizedDocs.length,
-            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : 'DigiLocker'
+            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : provider.getMode() === 'sandbox' ? 'DigiLocker Sandbox' : 'DigiLocker'
         });
     }
     catch (error) {
@@ -364,7 +364,7 @@ const getDocumentById = async (req, res) => {
         res.status(200).json({
             document,
             previewUrl: content.contentUrl,
-            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : 'DigiLocker'
+            badgeLabel: provider.getMode() === 'mock' ? 'Demo Document Source' : provider.getMode() === 'sandbox' ? 'DigiLocker Sandbox' : 'DigiLocker'
         });
     }
     catch (error) {

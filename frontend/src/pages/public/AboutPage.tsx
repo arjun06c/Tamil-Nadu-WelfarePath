@@ -20,13 +20,15 @@ export const AboutPage: React.FC = () => {
       <div className="glass-card p-8 rounded-3xl border border-slate-200 leading-relaxed text-xs text-slate-700 space-y-4">
         <p>
           {isTa
-            ? 'தமிழ்நாடு நலன்பாதை என்பது குடிமக்கள் அரசு நலத்திட்டங்களை எளிதாக கண்டறியவும், தகுதி நிபந்தனைகளை தெளிவாக புரிந்து கொள்ளவும் உருவாக்கப்பட்ட கல்வி முன்மாதிரி தளமாகும்.'
+            ? 'தமிழ்நாடு நலன்பாதை என்பது குடிமக்கள் அரசு நலத்திட்டங்களை எளிதாக கண்டறியவும், தகுதி நிபந்தனைகளை தெளிவாக புரிந்து கொள்ளவும் உருவாக்கப்பட்ட தளமாகும்.'
             : 'Tamil Nadu WelfarePath is a citizen-centric platform built to reduce information asymmetry, explain eligibility criteria transparently, and streamline document preparation.'}
         </p>
         <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-blue-950 flex items-start space-x-2">
           <Info className="w-5 h-5 text-blue-900 shrink-0 mt-0.5" />
           <p className="font-semibold">
-            Independent academic project prototype. Always verify details through official government portals.
+            {isTa
+              ? 'திட்ட நிபந்தனைகள் மற்றும் விண்ணப்ப நடைமுறைகளைச் சம்பந்தப்பட்ட அரசுத் துறையின் மூலம் உறுதிப்படுத்திக் கொள்ளவும்.'
+              : 'Please confirm scheme conditions and application procedures through the relevant official department.'}
           </p>
         </div>
       </div>

@@ -10,9 +10,11 @@ import adminRoutes from './routes/adminRoutes';
 import assistantRoutes from './routes/assistantRoutes';
 import miscRoutes from './routes/miscRoutes';
 import digilockerRoutes from './routes/digilockerRoutes';
+import citizenRoutes from './routes/citizenRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { seedDatabase } from './seed/seedData';
 import { WelfareDomain } from './models/WelfareDomain';
+import { User } from './models/User';
 
 const app: Application = express();
 
@@ -50,6 +52,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/misc', miscRoutes);
 app.use('/api/integrations/digilocker', digilockerRoutes);
+app.use('/api/citizen', citizenRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
@@ -58,10 +61,11 @@ app.use(errorHandler);
 const startServer = async () => {
   await connectDB();
 
-  // Auto-seed if database is unpopulated
-  const count = await WelfareDomain.countDocuments();
-  if (count === 0) {
-    console.log('[Auto-Seed] Initializing master database records...');
+  // Auto-seed if database is unpopulated or missing seeded users
+  const domainCount = await WelfareDomain.countDocuments();
+  const userCount = await User.countDocuments();
+  if (domainCount === 0 || userCount === 0) {
+    console.log('[Auto-Seed] Initializing master database & default user accounts...');
     await seedDatabase();
   }
 

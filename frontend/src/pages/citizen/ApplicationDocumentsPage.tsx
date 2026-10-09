@@ -72,7 +72,6 @@ export const ApplicationDocumentsPage: React.FC = () => {
       await fetchApplicationDetails();
     } catch (err: any) {
       console.error('Attach error:', err);
-      alert(err.response?.data?.message || 'Error attaching document from DigiLocker.');
     }
   };
 
@@ -232,7 +231,11 @@ export const ApplicationDocumentsPage: React.FC = () => {
               activeMode={mode}
               badgeLabel={badgeLabel}
               attachedDoc={attached}
-              onSelectDigiLocker={() => setShowPickerDocType(cfg.docType)}
+              availableDocs={availableDocs}
+              onSelectDigiLockerDoc={(dlDoc) => {
+                setShowPickerDocType(cfg.docType);
+                handleAttachFromDigiLocker(dlDoc);
+              }}
               onConnectDigiLocker={() => setShowConsentModal(true)}
               onManualUpload={(e) => handleManualUpload(e, cfg.docType)}
             />

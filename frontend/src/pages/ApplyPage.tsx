@@ -25,7 +25,7 @@ import {
   Check
 } from 'lucide-react';
 import { DocumentSourceSelector } from '../components/digilocker/DocumentSourceSelector';
-import { DigiLockerDocumentPicker, type AvailableDocument } from '../components/digilocker/DigiLockerDocumentPicker';
+import { type AvailableDocument } from '../components/digilocker/DigiLockerDocumentPicker';
 import { DigiLockerConsentModal } from '../components/digilocker/DigiLockerConsentModal';
 
 export const ApplyPage: React.FC = () => {
@@ -62,16 +62,16 @@ export const ApplyPage: React.FC = () => {
   const [uploadedDocs, setUploadedDocs] = useState<any[]>([]);
   const [ocrProcessingDoc, setOcrProcessingDoc] = useState<string | null>(null);
   const [declarationTruth, setDeclarationTruth] = useState(false);
-  const [declarationPrototype, setDeclarationPrototype] = useState(false);
+  const [declarationTerms, setDeclarationTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittedApplication, setSubmittedApplication] = useState<any>(null);
 
   // DigiLocker State
   const [digilockerStatus, setDigilockerStatus] = useState<any>(null);
   const [availableDocs, setAvailableDocs] = useState<AvailableDocument[]>([]);
-  const [pickerDocType, setPickerDocType] = useState<string | null>(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [pendingConnectDocType, setPendingConnectDocType] = useState<string | null>(null);
 
   useEffect(() => {
     fetchScheme();
@@ -91,27 +91,31 @@ export const ApplyPage: React.FC = () => {
     }
   };
 
-  const handleSelectDigiLockerDoc = (dlDoc: AvailableDocument) => {
-    if (!pickerDocType) return;
+  const handleSelectDigiLockerDocForType = (targetDocType: string, dlDoc: AvailableDocument) => {
+    const docName = dlDoc.name?.en || targetDocType;
     const newDoc = {
-      docType: pickerDocType,
-      fileName: `${dlDoc.documentType}.pdf`,
-      fileUrl: `https://via.placeholder.com/800x1100.png?text=DigiLocker+${dlDoc.documentType}`,
+      docType: targetDocType,
+      documentName: { en: docName, ta: dlDoc.name?.ta || docName },
+      fileName: `${dlDoc.documentType || targetDocType}.pdf`,
+      fileUrl: `https://via.placeholder.com/800x1100.png?text=DigiLocker+${dlDoc.documentType || targetDocType}`,
       fileSize: 2048,
       mimeType: dlDoc.mimeType || 'application/pdf',
       source: 'DIGILOCKER',
-      sourceReference: dlDoc.sourceReference,
-      issuer: dlDoc.issuer,
-      issueDate: dlDoc.issueDate,
-      ocrText: `DIGILOCKER VERIFIED DOCUMENT METADATA:\nType: ${dlDoc.documentType}\nIssuer: ${dlDoc.issuer}\nURI: ${dlDoc.sourceReference}`,
+      sourceReference: dlDoc.sourceReference || dlDoc.id || 'DIGILOCKER-REF-9812',
+      issuer: dlDoc.issuer || 'Government Authority',
+      issueDate: dlDoc.issueDate || '2025-01-01',
+      ocrText: `DIGILOCKER VERIFIED DOCUMENT METADATA:\nType: ${dlDoc.documentType}\nIssuer: ${dlDoc.issuer}`,
       ocrConfidence: 95,
       extractedData: { issuer: dlDoc.issuer, source: 'DIGILOCKER' },
       citizenConfirmedData: { source: 'DIGILOCKER' },
       isConfirmed: true
     };
 
-    setUploadedDocs((prev) => [...prev.filter((d) => d.docType !== pickerDocType), newDoc]);
-    setPickerDocType(null);
+    setUploadedDocs((prev) => [...prev.filter((d) => d.docType !== targetDocType), newDoc]);
+  };
+
+  const handleRemoveDocument = (docType: string) => {
+    setUploadedDocs((prev) => prev.filter((d) => d.docType !== docType));
   };
 
   const handleConnectDigiLockerInWizard = async () => {
@@ -172,7 +176,6 @@ export const ApplyPage: React.FC = () => {
         confidence = 78;
       }
 
-      // Simulate key field extractions based on document type
       if (docType === 'AadhaarCard') {
         extractedData = {
           nameOnDoc: user?.name,
@@ -198,6 +201,7 @@ export const ApplyPage: React.FC = () => {
         fileUrl: URL.createObjectURL(file),
         fileSize: file.size,
         mimeType: file.type,
+        source: 'MANUAL_UPLOAD',
         ocrText: text,
         ocrConfidence: confidence,
         extractedData,
@@ -220,7 +224,7 @@ export const ApplyPage: React.FC = () => {
   };
 
   const handleSubmitApplication = async () => {
-    if (!declarationTruth || !declarationPrototype) return;
+    if (!declarationTruth || !declarationTerms) return;
     setSubmitting(true);
     try {
       const res = await api.post('/applications', {
@@ -233,6 +237,7 @@ export const ApplyPage: React.FC = () => {
       setCurrentStep(6);
     } catch (err: any) {
       console.error('Submit error:', err);
+      alert(err.response?.data?.message || 'Error submitting application');
     } finally {
       setSubmitting(false);
     }
@@ -243,6 +248,13 @@ export const ApplyPage: React.FC = () => {
 
   const name = isTa ? scheme.name?.ta : scheme.name?.en;
 
+  // Mandatory documents check
+  const mandatoryConfigs = scheme.requiredDocuments?.filter((d: any) => d.isMandatory !== false) || [];
+  const missingDocs = mandatoryConfigs.filter(
+    (cfg: any) => !uploadedDocs.some((u) => u.docType === cfg.docType && (u.fileName || u.fileUrl))
+  );
+  const isAllMandatoryProvided = missingDocs.length === 0;
+
   const steps = [
     { num: 1, title: isTa ? '1. விண்ணப்பத் தகவல்' : '1. Application Info' },
     { num: 2, title: isTa ? '2. ஆவணங்கள்' : '2. Supporting Docs' },
@@ -251,6 +263,18 @@ export const ApplyPage: React.FC = () => {
     { num: 5, title: isTa ? '5. உறுதிமொழி' : '5. Declaration' },
     { num: 6, title: isTa ? '6. சமர்ப்பித்தல்' : '6. Confirmation' }
   ];
+
+  const goToStep = (stepNum: number) => {
+    if (stepNum > 2 && !isAllMandatoryProvided) {
+      alert(
+        isTa
+          ? `தொடர்வதற்கு அனைத்து கட்டாய ஆவணங்களையும் வழங்கவும்.`
+          : `Please provide all required documents before continuing.`
+      );
+      return;
+    }
+    setCurrentStep(stepNum);
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
@@ -278,7 +302,11 @@ export const ApplyPage: React.FC = () => {
               const isActive = currentStep === step.num;
               const isDone = currentStep > step.num;
               return (
-                <div key={step.num} className="text-center">
+                <div
+                  key={step.num}
+                  onClick={() => goToStep(step.num)}
+                  className="text-center cursor-pointer"
+                >
                   <div
                     className={`h-2 rounded-full mb-2 transition-all ${
                       isDone
@@ -416,34 +444,9 @@ export const ApplyPage: React.FC = () => {
               <span>{isTa ? '2. தேவைப்படும் சான்றிதழ்கள் (மூலம் தேர்வு)' : '2. Required Document Source Selection'}</span>
             </h2>
             <span className="text-[11px] text-slate-500">
-              Option A: Manual Upload | Option B: Fetch DigiLocker
+              Option A: Manual Upload | Option B: Get from DigiLocker
             </span>
           </div>
-
-          {/* DigiLocker Picker Modal inside Step 2 */}
-          {pickerDocType && (
-            <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-blue-900 text-xs">
-                  {isTa ? `டிஜிலாக்கரில் இருந்து சான்றிதழ் தேர்வு (${pickerDocType})` : `Select DigiLocker Document for ${pickerDocType}`}
-                </span>
-                <button
-                  onClick={() => setPickerDocType(null)}
-                  className="text-xs font-bold text-slate-500 hover:text-slate-900"
-                >
-                  {isTa ? 'மூடுக' : 'Close'}
-                </button>
-              </div>
-
-              <DigiLockerDocumentPicker
-                documents={availableDocs}
-                onSelectDocument={handleSelectDigiLockerDoc}
-                filterDocType={pickerDocType}
-                mode={digilockerStatus?.mode || 'mock'}
-                badgeLabel={digilockerStatus?.badgeLabel}
-              />
-            </div>
-          )}
 
           <div className="space-y-4">
             {scheme.requiredDocuments?.map((doc: any, idx: number) => {
@@ -459,14 +462,36 @@ export const ApplyPage: React.FC = () => {
                   activeMode={digilockerStatus?.mode || 'mock'}
                   badgeLabel={digilockerStatus?.badgeLabel}
                   attachedDoc={uploaded}
-                  onSelectDigiLocker={() => setPickerDocType(doc.docType)}
-                  onConnectDigiLocker={() => setShowConsentModal(true)}
+                  availableDocs={availableDocs}
+                  onSelectDigiLockerDoc={(dlDoc) => handleSelectDigiLockerDocForType(doc.docType, dlDoc)}
+                  onConnectDigiLocker={() => {
+                    setPendingConnectDocType(doc.docType);
+                    setShowConsentModal(true);
+                  }}
                   onManualUpload={(e) => handleFileUpload(e, doc.docType)}
+                  onRemoveDocument={() => handleRemoveDocument(doc.docType)}
                   isProcessing={ocrProcessingDoc === doc.docType}
                 />
               );
             })}
           </div>
+
+          {/* Helper Message if Mandatory Docs Missing */}
+          {!isAllMandatoryProvided && (
+            <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 flex items-start space-x-2.5">
+              <AlertTriangle className="w-4.5 h-4.5 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-extrabold block">
+                  {isTa ? 'தொடர்வதற்கு அனைத்து கட்டாய ஆவணங்களையும் வழங்கவும்.' : 'Please provide all required documents before continuing.'}
+                </span>
+                <span className="text-[11px] text-amber-900 mt-0.5 block">
+                  {isTa
+                    ? `விடுபட்ட கட்டாய ஆவணங்கள்: ${missingDocs.map((m: any) => m.label?.ta || m.docType).join(', ')}`
+                    : `Missing mandatory documents: ${missingDocs.map((m: any) => m.label?.en || m.docType).join(', ')}`}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Consent Modal Popup */}
           <DigiLockerConsentModal
@@ -488,8 +513,13 @@ export const ApplyPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setCurrentStep(3)}
-              className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center space-x-2"
+              onClick={() => goToStep(3)}
+              disabled={!isAllMandatoryProvided}
+              className={`px-6 py-3 font-extrabold text-xs rounded-xl shadow-sm transition-all flex items-center space-x-2 ${
+                isAllMandatoryProvided
+                  ? 'bg-blue-900 hover:bg-blue-800 text-white cursor-pointer'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 opacity-60'
+              }`}
             >
               <span>{isTa ? 'அடுத்த படி: OCR சரிபார்ப்பு' : 'Next: OCR Review'}</span>
               <ArrowRight className="w-4 h-4" />
@@ -566,7 +596,7 @@ export const ApplyPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setCurrentStep(4)}
+              onClick={() => goToStep(4)}
               className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center space-x-2"
             >
               <span>{isTa ? 'அடுத்த படி: விண்ணப்ப முன்நோக்கு' : 'Next: Preview Summary'}</span>
@@ -593,50 +623,43 @@ export const ApplyPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Form Summary Grid */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
             <div>
               <span className="text-slate-400 block">{isTa ? 'விண்ணப்பதாரர் பெயர்' : 'Applicant Name'}</span>
               <span className="font-bold text-slate-900">{formData.applicantName}</span>
             </div>
-
             <div>
-              <span className="text-slate-400 block">{isTa ? 'கைப்பேசி' : 'Mobile'}</span>
+              <span className="text-slate-400 block">{isTa ? 'கைப்பேசி எண்' : 'Mobile'}</span>
               <span className="font-bold text-slate-900">{formData.mobile}</span>
             </div>
-
-            <div>
-              <span className="text-slate-400 block">{isTa ? 'வருமானம்' : 'Annual Income'}</span>
-              <span className="font-bold text-emerald-800">₹{formData.annualIncome.toLocaleString('en-IN')}</span>
-            </div>
-
             <div>
               <span className="text-slate-400 block">{isTa ? 'மாவட்டம்' : 'District'}</span>
               <span className="font-bold text-slate-900">{formData.district}</span>
             </div>
-
             <div>
-              <span className="text-slate-400 block">{isTa ? 'ரேஷன் கார்டு வகை' : 'Ration Card Category'}</span>
-              <span className="font-bold text-slate-900">{formData.rationCardType}</span>
+              <span className="text-slate-400 block">{isTa ? 'ஆண்டு வருமானம்' : 'Annual Income'}</span>
+              <span className="font-bold text-emerald-800">₹{formData.annualIncome?.toLocaleString('en-IN')}</span>
             </div>
-
             <div>
-              <span className="text-slate-400 block">{isTa ? 'வங்கி கணக்கு (DBT)' : 'Bank Account'}</span>
-              <span className="font-bold text-slate-900">{formData.bankAccountNo}</span>
+              <span className="text-slate-400 block">{isTa ? 'வங்கி கணக்கு' : 'Bank Account'}</span>
+              <span className="font-mono font-bold text-slate-900">{formData.bankAccountNo}</span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">{isTa ? 'IFSC குறியீடு' : 'Bank IFSC'}</span>
+              <span className="font-mono font-bold text-slate-900">{formData.bankIfsc}</span>
             </div>
           </div>
 
-          {/* Attached Documents List */}
-          <div>
-            <span className="font-bold text-xs text-slate-900 block mb-2">{isTa ? 'இணைக்கப்பட்ட சான்றிதழ்கள்' : 'Attached Document Proofs'}</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {uploadedDocs.map((d, i) => (
-                <div key={i} className="p-2.5 bg-white border border-slate-200 rounded-lg flex items-center justify-between">
-                  <span className="font-semibold text-slate-800">{d.docType}</span>
-                  <span className="text-emerald-700 text-[10px] font-bold bg-emerald-50 px-2 py-0.5 rounded">Attached</span>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-2">
+            <span className="font-bold text-slate-900 text-xs block">{isTa ? 'இணைக்கப்பட்ட ஆவணங்கள்:' : 'Attached Documents:'}</span>
+            {uploadedDocs.map((d, i) => (
+              <div key={i} className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800">{d.docType} ({d.fileName})</span>
+                <span className="text-[10px] font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                  Source: {d.source || 'MANUAL_UPLOAD'}
+                </span>
+              </div>
+            ))}
           </div>
 
           <div className="flex items-center justify-between pt-4">
@@ -652,56 +675,48 @@ export const ApplyPage: React.FC = () => {
               onClick={() => setCurrentStep(5)}
               className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center space-x-2"
             >
-              <span>{isTa ? 'அடுத்த படி: உறுதிமொழி & சம்மதம்' : 'Next: Consent & Declaration'}</span>
+              <span>{isTa ? 'அடுத்த படி: சட்டபூர்வ உறுதிமொழி' : 'Next: Declaration'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 5: Consent, Declaration & Disclaimers */}
+      {/* STEP 5: Citizen Statutory Declaration */}
       {currentStep === 5 && (
         <div className="glass-card p-6 rounded-2xl space-y-6 border border-slate-200">
           <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-blue-900" />
-            <span>{isTa ? '5. சம்மதம் & உறுதிமொழி (Declaration)' : '5. Citizen Declaration & Consent'}</span>
+            <Lock className="w-5 h-5 text-blue-900" />
+            <span>{isTa ? '5. சட்டபூர்வ உறுதிமொழி & சம்மதம்' : '5. Citizen Statutory Declaration'}</span>
           </h2>
 
-          <div className="space-y-4">
-            {/* Checkbox 1: Truth Declaration */}
-            <label className="flex items-start space-x-3 p-4 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100/80 transition-all">
+          <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 space-y-3 text-xs text-blue-950">
+            <label className="flex items-start space-x-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={declarationTruth}
                 onChange={(e) => setDeclarationTruth(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-blue-900 rounded focus:ring-blue-900"
+                className="mt-0.5 w-4 h-4 rounded text-blue-900 border-slate-300 focus:ring-blue-900"
               />
-              <div className="text-xs text-slate-700">
-                <span className="font-bold block text-slate-900 mb-0.5">
-                  {isTa ? '1. தகவல்களின் உண்மைத் தன்மை' : '1. Truthfulness Declaration'}
-                </span>
+              <span className="leading-relaxed">
                 {isTa
-                  ? 'நான் வழங்கிய அனைத்து தகவல்களும் ஆவணங்களும் உண்மையானவை என உறுதி கூறுகிறேன்.'
-                  : 'I declare that all information and attached document proofs provided in this assistance application are true and correct to the best of my knowledge.'}
-              </div>
+                  ? 'நான் அளித்த தகவல்கள் மற்றும் சமர்ப்பிக்கப்பட்ட சான்றிதழ்கள் அனைத்தும் உண்மையானவை என உறுதி கூறுகிறேன்.'
+                  : 'I hereby declare that all the information and documents provided in this application are true and correct to the best of my knowledge.'}
+              </span>
             </label>
 
-            {/* Checkbox 2: Prototype Disclaimer */}
-            <label className="flex items-start space-x-3 p-4 bg-amber-50/70 border border-amber-200 rounded-xl cursor-pointer hover:bg-amber-100/80 transition-all">
+            <label className="flex items-start space-x-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={declarationPrototype}
-                onChange={(e) => setDeclarationPrototype(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-amber-900 rounded focus:ring-amber-900"
+                checked={declarationTerms}
+                onChange={(e) => setDeclarationTerms(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded text-blue-900 border-slate-300 focus:ring-blue-900"
               />
-              <div className="text-xs text-amber-950">
-                <span className="font-bold block text-amber-900 mb-0.5">
-                  {isTa ? '2. கல்விசார் மாதிரித் திட்ட அறிவிப்பு சம்மதம்' : '2. Academic Prototype Assistance Consent'}
-                </span>
+              <span className="leading-relaxed">
                 {isTa
-                  ? 'தமிழ்நாடு WelfarePath ஒரு கல்விசார் மாதிரித் திட்டமாகும், இது நேரடி அரசு ஒப்புதலுக்கு உத்தரவாதம் அளிக்காது என்பதை ஒப்புக்கொள்கிறேன்.'
-                  : 'I understand that Tamil Nadu WelfarePath is an educational academic final-year project providing application assistance and journey tracking, not direct official government approval.'}
-              </div>
+                  ? 'இது தமிழ்நாடு நலப்பாதை தளத்தின் மூலமான நேரடி நலத்திட்ட விண்ணப்பமாகும் என்பதை ஒப்புக்கொள்கிறேன்.'
+                  : 'I acknowledge that this is a digital welfare benefit application logged via the Tamil Nadu WelfarePath Portal.'}
+              </span>
             </label>
           </div>
 
@@ -716,74 +731,50 @@ export const ApplyPage: React.FC = () => {
 
             <button
               onClick={handleSubmitApplication}
-              disabled={!declarationTruth || !declarationPrototype || submitting}
-              className="px-8 py-3.5 bg-gradient-to-r from-blue-900 via-indigo-900 to-teal-800 disabled:opacity-50 hover:from-blue-800 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center space-x-2"
+              disabled={!declarationTruth || !declarationTerms || submitting}
+              className="px-6 py-3 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center space-x-2"
             >
-              <span>
-                {submitting
-                  ? isTa
-                    ? 'சமர்ப்பிக்கிறது...'
-                    : 'Submitting Package...'
-                  : isTa
-                  ? 'விண்ணப்பத்தை இறுதியாக சமர்ப்பி'
-                  : 'Submit Application Assistance Package'}
-              </span>
-              <ArrowRight className="w-4 h-4" />
+              {submitting ? (
+                <span>{isTa ? 'சமர்ப்பிக்கப்படுகிறது...' : 'Submitting Application...'}</span>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <span>{isTa ? 'விண்ணப்பத்தைச் சமர்ப்பி' : 'Submit Final Application'}</span>
+                </>
+              )}
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 6: Confirmation & Reference Number Screen */}
-      {currentStep === 6 && (
-        <div className="glass-card p-8 rounded-3xl text-center space-y-6 border border-emerald-200 bg-gradient-to-b from-white to-emerald-50/30 shadow-md">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+      {/* STEP 6: Submission Confirmation */}
+      {currentStep === 6 && submittedApplication && (
+        <div className="glass-card p-8 rounded-3xl text-center space-y-6 border border-emerald-200 bg-gradient-to-b from-white to-emerald-50/40">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-xs">
             <CheckCircle2 className="w-10 h-10" />
           </div>
 
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">
-              {isTa ? 'வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது' : 'Application Successfully Logged'}
+            <span className="font-mono font-black text-sm text-blue-900 bg-blue-50 border border-blue-200 px-4 py-1 rounded-full uppercase tracking-wider">
+              {submittedApplication.applicationReference || submittedApplication.applicationNo}
             </span>
-            <h2 className="text-2xl font-extrabold text-slate-900 mt-3">
-              {isTa ? 'உங்கள் விண்ணப்ப உதவி பதிவு செய்யப்பட்டுள்ளது!' : 'Application Assistance Confirmation'}
+            <h2 className="text-2xl font-black text-slate-900 mt-3">
+              {isTa ? 'விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது!' : 'Application Submitted Successfully!'}
             </h2>
-            <p className="text-xs text-slate-600 mt-1 max-w-lg mx-auto">
+            <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto">
               {isTa
-                ? 'உங்கள் விண்ணப்பக் கோப்பு அதிகாரி சரிபார்ப்புக் குழுவிற்கு அனுப்பப்பட்டுள்ளது.'
-                : 'Your application assistance request has been assigned reference number for tracking.'}
+                ? `உங்கள் விண்ணப்பம் பரிசீலனைக்காக மண்டல அலுவலர் பணிவரிசையில் சேர்க்கப்பட்டுள்ளது.`
+                : `Your application package has been logged. Current Status: Under Officer Verification.`}
             </p>
           </div>
 
-          {/* Reference Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs max-w-md mx-auto text-center space-y-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block">
-              {isTa ? 'அரசு குறிப்பு எண் (Reference Number)' : 'Application Reference Number'}
-            </span>
-            <div className="text-2xl font-black text-blue-900 font-mono tracking-wider">
-              {submittedApplication?.applicationReference || 'TNP-WP-2026-000124'}
-            </div>
-            <div className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto border border-emerald-200 mt-2">
-              Status: SUBMITTED (Assigned for Officer Audit)
-            </div>
-          </div>
-
-          {/* Action Navigation */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+          <div className="flex items-center justify-center space-x-3 pt-4">
             <button
-              onClick={() => navigate(`/citizen/applications/${submittedApplication?._id || ''}`)}
-              className="px-6 py-3.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-2"
+              onClick={() => navigate(`/citizen/applications/${submittedApplication._id}`)}
+              className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center space-x-2"
             >
-              <span>{isTa ? 'விண்ணப்ப நிலையைக் கண்காணிக்க' : 'Track Application Timeline'}</span>
+              <span>{isTa ? 'விண்ணப்பத்தைக் கண்காணிக்க' : 'Track Application Status'}</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => window.print()}
-              className="px-5 py-3.5 bg-white border border-slate-300 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50 transition-all flex items-center space-x-2"
-            >
-              <Download className="w-4 h-4 text-slate-500" />
-              <span>{isTa ? 'ஒப்புதல் ரசீது பதிவிறக்கம்' : 'Download Acknowledgement'}</span>
             </button>
           </div>
         </div>
@@ -792,4 +783,3 @@ export const ApplyPage: React.FC = () => {
     </div>
   );
 };
-

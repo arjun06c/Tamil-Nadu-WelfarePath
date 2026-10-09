@@ -40,12 +40,18 @@ const getApplicationDetailsForOfficer = async (req, res) => {
         const { id } = req.params;
         const application = await Application_1.Application.findById(id)
             .populate('schemeId')
-            .populate('citizenId', 'name email mobile district annualIncome community');
+            .populate('citizenId', 'name email mobile district annualIncome community')
+            .populate('approvedBy', 'name role district email')
+            .populate('rejectedBy', 'name role district email');
         if (!application) {
             res.status(404).json({ message: 'Application not found' });
             return;
         }
-        const documents = await ApplicationDocument_1.ApplicationDocument.find({ applicationId: application._id });
+        const documents = await ApplicationDocument_1.ApplicationDocument.find({ applicationId: application._id })
+            .populate('verifiedBy', 'name role district email')
+            .populate('correctionRequestedBy', 'name role district email')
+            .populate('rejectedBy', 'name role district email')
+            .sort({ version: -1, createdAt: -1 });
         const benefitRecord = await BenefitRecord_1.BenefitRecord.findOne({ applicationId: application._id });
         res.status(200).json({
             application,
@@ -65,8 +71,12 @@ const updateDocumentVerificationStatus = async (req, res) => {
             res.status(401).json({ message: 'Unauthenticated' });
             return;
         }
+        if (req.user.role !== 'Officer' && req.user.role !== 'Admin') {
+            res.status(403).json({ message: 'Unauthorized: Only authorized officers can verify application documents' });
+            return;
+        }
         const { id, docId } = req.params;
-        const { verificationStatus, officerRemarks } = req.body;
+        const { verificationStatus, officerRemarks, correctionReason, rejectionReason } = req.body;
         const document = await ApplicationDocument_1.ApplicationDocument.findOne({
             _id: docId,
             applicationId: id
@@ -79,13 +89,49 @@ const updateDocumentVerificationStatus = async (req, res) => {
         if (officerRemarks !== undefined) {
             document.officerRemarks = officerRemarks;
         }
-        document.verifiedAt = new Date();
-        document.verifiedBy = req.user.id;
+        let auditAction = `DOCUMENT_VERIFICATION_UPDATED`;
+        if (verificationStatus === 'VERIFIED' || verificationStatus === 'ACCEPTED') {
+            document.verifiedAt = new Date();
+            document.verifiedBy = req.user.id;
+            auditAction = 'DOCUMENT_VERIFIED';
+        }
+        else if (verificationStatus === 'CORRECTION_REQUIRED') {
+            document.correctionReason = correctionReason || officerRemarks || 'Correction requested by reviewing officer';
+            document.correctionRequestedAt = new Date();
+            document.correctionRequestedBy = req.user.id;
+            auditAction = 'DOCUMENT_CORRECTION_REQUESTED';
+        }
+        else if (verificationStatus === 'REJECTED') {
+            document.rejectionReason = rejectionReason || officerRemarks || 'Document rejected by officer';
+            document.rejectedAt = new Date();
+            document.rejectedBy = req.user.id;
+            auditAction = 'DOCUMENT_REJECTED';
+        }
         await document.save();
-        // If status is CORRECTION_REQUIRED, update application status as well and notify citizen
-        if (verificationStatus === 'CORRECTION_REQUIRED') {
-            const application = await Application_1.Application.findById(id);
-            if (application) {
+        const application = await Application_1.Application.findById(id);
+        if (application) {
+            if (verificationStatus === 'VERIFIED' || verificationStatus === 'ACCEPTED') {
+                const allDocs = await ApplicationDocument_1.ApplicationDocument.find({ applicationId: id, isCurrentVersion: true });
+                const scheme = await Scheme_1.Scheme.findById(application.schemeId);
+                const mandatoryConfigs = scheme?.requiredDocuments?.filter((r) => r.isMandatory !== false) || [];
+                const allMandatoryVerified = mandatoryConfigs.every((cfg) => {
+                    const attached = allDocs.find((d) => d.docType === cfg.docType);
+                    return attached && (attached.verificationStatus === 'VERIFIED' || attached.verificationStatus === 'ACCEPTED');
+                });
+                if (allMandatoryVerified && (application.status === Application_1.ApplicationStatus.SUBMITTED || application.status === Application_1.ApplicationStatus.DOC_VERIFICATION)) {
+                    application.status = Application_1.ApplicationStatus.OFFICER_REVIEW;
+                    application.statusHistory.push({
+                        previousStatus: application.status,
+                        newStatus: Application_1.ApplicationStatus.OFFICER_REVIEW,
+                        changedBy: req.user.id,
+                        changedByRole: req.user.role || 'Officer',
+                        reason: 'All required documents verified successfully.',
+                        timestamp: new Date()
+                    });
+                    await application.save();
+                }
+            }
+            else if (verificationStatus === 'CORRECTION_REQUIRED') {
                 application.status = Application_1.ApplicationStatus.CORRECTION_REQUIRED;
                 application.officerRemarks = officerRemarks || 'Correction required for supporting document.';
                 application.correctionCount = (application.correctionCount || 0) + 1;
@@ -98,7 +144,6 @@ const updateDocumentVerificationStatus = async (req, res) => {
                     timestamp: new Date()
                 });
                 await application.save();
-                // Create Citizen Notification
                 await Notification_1.Notification.create({
                     userId: application.citizenId,
                     title: {
@@ -113,12 +158,38 @@ const updateDocumentVerificationStatus = async (req, res) => {
                     linkUrl: `/citizen/applications/${application._id}/documents`
                 });
             }
+            else if (verificationStatus === 'REJECTED') {
+                application.status = Application_1.ApplicationStatus.REJECTED;
+                application.officerRemarks = officerRemarks || 'Supporting document rejected by officer.';
+                application.statusHistory.push({
+                    previousStatus: application.status,
+                    newStatus: Application_1.ApplicationStatus.REJECTED,
+                    changedBy: req.user.id,
+                    changedByRole: req.user.role || 'Officer',
+                    reason: officerRemarks || 'Officer rejected supporting document',
+                    timestamp: new Date()
+                });
+                await application.save();
+                await Notification_1.Notification.create({
+                    userId: application.citizenId,
+                    title: {
+                        en: `Application Document Rejected (${document.docType})`,
+                        ta: `ஆவணம் நிராகரிக்கப்பட்டது (${document.docType})`
+                    },
+                    message: {
+                        en: `Your document ${document.docType} was rejected: "${officerRemarks || 'Does not meet requirements'}"`,
+                        ta: `உங்கள் சான்றிதழ் ${document.docType} நிராகரிக்கப்பட்டது: "${officerRemarks || 'தேவைகளை பூர்த்தி செய்யவில்லை'}"`
+                    },
+                    type: 'ACTION_REQUIRED',
+                    linkUrl: `/citizen/applications/${application._id}`
+                });
+            }
         }
         // Audit Log
         await AuditLog_1.AuditLog.create({
             actorId: req.user.id,
             actorEmail: req.user.email,
-            action: `VERIFY_DOCUMENT_${verificationStatus}`,
+            action: auditAction,
             targetType: 'ApplicationDocument',
             targetId: document._id.toString(),
             details: officerRemarks || `Document verification status set to ${verificationStatus}`
@@ -141,16 +212,42 @@ const updateApplicationStatus = async (req, res) => {
             return;
         }
         const { id } = req.params;
-        const { status, remarks, correctionRequested } = req.body;
+        const { status, remarks } = req.body;
         const application = await Application_1.Application.findById(id);
         if (!application) {
             res.status(404).json({ message: 'Application not found' });
             return;
         }
+        // Prevent Application Approval if required documents are not verified!
+        if (status === Application_1.ApplicationStatus.APPROVED || status === Application_1.ApplicationStatus.BENEFIT_RELEASED) {
+            const scheme = await Scheme_1.Scheme.findById(application.schemeId);
+            const requiredDocs = scheme?.requiredDocuments || [];
+            const appDocs = await ApplicationDocument_1.ApplicationDocument.find({ applicationId: application._id, isCurrentVersion: true });
+            const unverifiedDocs = appDocs.filter((d) => d.verificationStatus !== 'VERIFIED' && d.verificationStatus !== 'ACCEPTED');
+            const mandatoryConfigs = requiredDocs.filter((r) => r.isMandatory !== false);
+            const isMissingMandatory = mandatoryConfigs.some((cfg) => {
+                const attached = appDocs.find((d) => d.docType === cfg.docType);
+                return !attached || (attached.verificationStatus !== 'VERIFIED' && attached.verificationStatus !== 'ACCEPTED');
+            });
+            if (unverifiedDocs.length > 0 || isMissingMandatory) {
+                res.status(400).json({
+                    message: 'Cannot approve application: All required supporting documents must be verified by an officer first.'
+                });
+                return;
+            }
+        }
         const previousStatus = application.status;
         application.status = status;
         application.officerRemarks = remarks || application.officerRemarks;
-        if (status === Application_1.ApplicationStatus.CORRECTION_REQUIRED) {
+        if (status === Application_1.ApplicationStatus.APPROVED) {
+            application.approvedBy = req.user.id;
+            application.approvedAt = new Date();
+        }
+        else if (status === Application_1.ApplicationStatus.REJECTED) {
+            application.rejectedBy = req.user.id;
+            application.rejectedAt = new Date();
+        }
+        else if (status === Application_1.ApplicationStatus.CORRECTION_REQUIRED) {
             application.correctionCount = (application.correctionCount || 0) + 1;
         }
         application.statusHistory.push({

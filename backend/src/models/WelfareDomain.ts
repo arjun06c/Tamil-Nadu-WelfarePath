@@ -12,6 +12,14 @@ export interface IWelfareDomain extends Document {
   };
   iconName: string;
   displayOrder: number;
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+  officialDepartment?: {
+    en: string;
+    ta: string;
+  };
+  officialSourceUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const WelfareDomainSchema: Schema = new Schema(
@@ -26,7 +34,13 @@ const WelfareDomainSchema: Schema = new Schema(
       ta: { type: String, required: true }
     },
     iconName: { type: String, default: 'Award' },
-    displayOrder: { type: Number, default: 0 }
+    displayOrder: { type: Number, default: 0 },
+    status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'ARCHIVED'], default: 'ACTIVE' },
+    officialDepartment: {
+      en: { type: String, default: '' },
+      ta: { type: String, default: '' }
+    },
+    officialSourceUrl: { type: String, default: '' }
   },
   { timestamps: true }
 );

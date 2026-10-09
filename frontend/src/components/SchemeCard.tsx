@@ -30,9 +30,11 @@ export const SchemeCard: React.FC<SchemeCardProps> = ({
       {/* Top Banner Tag */}
       <div>
         <div className="flex items-start justify-between gap-3 mb-3">
-          <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide uppercase bg-blue-50 text-blue-900 border border-blue-200">
-            {scheme.schemeCode}
-          </span>
+          <div className="flex items-center space-x-1">
+            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide uppercase bg-blue-50 text-blue-900 border border-blue-200">
+              {scheme.schemeCode}
+            </span>
+          </div>
 
           {/* Eligibility Badge if present */}
           {status === 'ELIGIBLE' && (

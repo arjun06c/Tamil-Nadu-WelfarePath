@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
-import { User, DollarSign, GraduationCap, Users, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, DollarSign, GraduationCap, Users, Save, CheckCircle2, AlertCircle, Sparkles, Edit3 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
   const { profile, refreshProfile, lang } = useAuth();
   const { t } = useTranslation();
   const isTa = lang === 'ta';
+  const [searchParams] = useSearchParams();
+
+  const isEditMode = searchParams.get('edit') === 'true';
+  const isCompleteMode = searchParams.get('complete') === 'true';
 
   const [formData, setFormData] = useState<any>({
     dob: '2003-05-15',
@@ -41,6 +46,34 @@ export const ProfilePage: React.FC = () => {
     }
   }, [profile]);
 
+  // Calculate dynamic completion percentage and missing fields
+  const calculateCompletionStats = (data: any) => {
+    const requiredChecklist = [
+      { key: 'dob', label: isTa ? 'பிறந்த தேதி' : 'Date of Birth' },
+      { key: 'gender', label: isTa ? 'பாலினம்' : 'Gender' },
+      { key: 'district', label: isTa ? 'மாவட்டம்' : 'District' },
+      { key: 'taluk', label: isTa ? 'வட்டம்' : 'Taluk' },
+      { key: 'villageTown', label: isTa ? 'ஊர் / நகரம்' : 'Village/Town' },
+      { key: 'annualIncome', label: isTa ? 'ஆண்டு வருமானம்' : 'Annual Income' },
+      { key: 'employmentStatus', label: isTa ? 'வேலை நிலை' : 'Employment Status' },
+      { key: 'occupation', label: isTa ? 'தொழில்' : 'Occupation' },
+      { key: 'educationLevel', label: isTa ? 'கல்வித் தகுதி' : 'Education Level' },
+      { key: 'socialCategory', label: isTa ? 'சமூகப் பிரிவு' : 'Social Category' }
+    ];
+
+    const missing = requiredChecklist.filter((item) => {
+      const val = data[item.key];
+      return val === undefined || val === null || val === '';
+    });
+
+    const completedCount = requiredChecklist.length - missing.length;
+    const percentage = Math.round((completedCount / requiredChecklist.length) * 100);
+
+    return { percentage, missing };
+  };
+
+  const { percentage: completionPercentage, missing: missingFields } = calculateCompletionStats(formData);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -48,9 +81,16 @@ export const ProfilePage: React.FC = () => {
     try {
       await api.put('/profile', formData);
       await refreshProfile();
-      setMsg(isTa ? 'சுயவிவரம் வெற்றிகரமாக சேமிக்கப்பட்டது!' : 'Citizen profile updated successfully!');
+      // Notify application listeners (Sidebar, Dashboard, Eligible Schemes) that profile has changed
+      window.dispatchEvent(new CustomEvent('profile-updated'));
+      setMsg(
+        isTa
+          ? 'சுயவிவரம் வெற்றிகரமாக சேமிக்கப்பட்டது! உங்கள் நலத்திட்ட தகுதிகள் மற்றும் பரிந்துரைகள் புதுப்பிக்கப்பட்டன.'
+          : 'Citizen profile saved successfully! Personalized scheme eligibility and recommendations updated.'
+      );
     } catch (err: any) {
-      setMsg(isTa ? 'சேமிப்பதில் பிழை ஏற்பட்டது.' : 'Error updating profile');
+      console.error('Save profile error:', err);
+      setMsg(isTa ? 'சேமிப்பதில் பிழை ஏற்பட்டது.' : 'Error updating profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -60,7 +100,7 @@ export const ProfilePage: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 py-10">
       
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             {isTa ? 'குடிமகன் சுயவிவரம் (Profile Builder)' : 'Citizen Profile Builder'}
@@ -69,16 +109,47 @@ export const ProfilePage: React.FC = () => {
             {isTa ? 'உங்கள் தகுதியான அரசு நலத்திட்டங்களை கண்டறிய உதவக்கூடிய தகவல்கள்' : 'Complete your details to unlock explainable scheme eligibility matching'}
           </p>
         </div>
-        <div className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center space-x-1">
-          <CheckCircle2 className="w-4 h-4" />
-          <span>{isTa ? '85% பூர்த்தியானது' : 'Profile Ready'}</span>
+        <div className="px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center space-x-1.5 shrink-0">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>{isTa ? `${completionPercentage}% பூர்த்தியானது` : `${completionPercentage}% Profile Complete`}</span>
         </div>
       </div>
 
+      {/* Mode Banners (Edit or Complete mode) */}
+      {isCompleteMode && missingFields.length > 0 && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-4 rounded-2xl mb-6 flex items-start space-x-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-bold text-amber-950 mb-0.5">
+              {isTa ? 'சுயவிவரப் பூர்த்தி பயன்முறை (Complete Profile Mode)' : 'Complete Profile Mode'}
+            </h4>
+            <p className="text-[11px] leading-relaxed">
+              {isTa
+                ? `தயவுசெய்து பின்வரும் விடுபட்ட தகவல்களைப் பூர்த்தி செய்யவும்: ${missingFields.map(m => m.label).join(', ')}.`
+                : `Please review and complete the following missing fields to maximize your scheme recommendations: ${missingFields.map(m => m.label).join(', ')}.`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isEditMode && (
+        <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs p-4 rounded-2xl mb-6 flex items-center space-x-3">
+          <Edit3 className="w-5 h-5 text-indigo-600 shrink-0" />
+          <div>
+            <h4 className="font-bold text-indigo-950">
+              {isTa ? 'சுயவிவரத் திருத்த பயன்முறை (Edit Profile Mode)' : 'Edit Profile Mode'}
+            </h4>
+            <p className="text-[11px]">
+              {isTa ? 'உங்கள் தகவல்களைப் புதுப்பித்து சேமிக்கவும். நலத்திட்டத் தகுதிகள் உடனுக்குடன் கணக்கிடப்படும்.' : 'Update your personal or financial information below and click save to refresh scheme recommendations.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {msg && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs p-3.5 rounded-2xl mb-6 flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>{msg}</span>
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs p-4 rounded-2xl mb-6 flex items-center space-x-3 shadow-2xs">
+          <Sparkles className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span className="font-bold">{msg}</span>
         </div>
       )}
 

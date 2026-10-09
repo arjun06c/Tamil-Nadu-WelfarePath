@@ -21,6 +21,7 @@ import { AboutPage } from './pages/public/AboutPage';
 
 // Citizen Workspace Pages
 import { CitizenDashboardPage } from './pages/citizen/CitizenDashboardPage';
+import { MyEligibleSchemesPage } from './pages/citizen/MyEligibleSchemesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { EligibilityResultPage } from './pages/EligibilityResultPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -88,6 +89,7 @@ export const App: React.FC = () => {
           >
             <Route index element={<Navigate to="/citizen/dashboard" replace />} />
             <Route path="dashboard" element={<CitizenDashboardPage />} />
+            <Route path="eligible-schemes" element={<MyEligibleSchemesPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="schemes" element={<SchemeDiscoveryPage />} />
             <Route path="schemes/:id" element={<SchemeDetailPage />} />

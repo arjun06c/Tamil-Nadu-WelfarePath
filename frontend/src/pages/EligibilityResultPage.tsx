@@ -135,7 +135,7 @@ export const EligibilityResultPage: React.FC = () => {
           )}
 
           <Link
-            to="/profile"
+            to="/citizen/profile"
             className="w-full sm:w-auto px-5 py-3.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs rounded-xl transition-colors flex items-center justify-center space-x-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" />

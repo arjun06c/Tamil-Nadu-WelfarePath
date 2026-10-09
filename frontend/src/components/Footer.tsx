@@ -22,7 +22,7 @@ export const Footer: React.FC = () => {
             </p>
             <div className="flex items-center space-x-2 text-xs text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-full border border-emerald-800/50 w-fit">
               <ShieldCheck className="w-4 h-4" />
-              <span>{isTa ? 'அதிகாரப்பூர்வ மாதிரி தளம் 2026' : 'Official Final Year Project Prototype 2026'}</span>
+              <span>{isTa ? 'தமிழ்நாடு நலப்பாதை 2026' : 'Tamil Nadu WelfarePath 2026'}</span>
             </div>
           </div>
 
@@ -66,7 +66,7 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="pt-6 border-t border-slate-800 text-center text-xs text-slate-500 flex flex-col md:flex-row items-center justify-between">
-          <p>© 2026 Tamil Nadu WelfarePath. Designed with precision for Academic Excellence.</p>
+          <p>© 2026 Tamil Nadu WelfarePath. {isTa ? 'அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.' : 'All rights reserved.'}</p>
           <p className="flex items-center space-x-1 mt-2 md:mt-0">
             <span>{isTa ? 'உருவாக்கப்பட்டது' : 'Crafted with'}</span>
             <Heart className="w-3 h-3 text-red-500 fill-current" />

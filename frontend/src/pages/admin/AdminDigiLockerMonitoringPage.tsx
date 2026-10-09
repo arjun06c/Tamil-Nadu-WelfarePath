@@ -41,7 +41,7 @@ export const AdminDigiLockerMonitoringPage: React.FC = () => {
   };
 
   const mode = data?.mode || 'mock';
-  const badgeLabel = data?.badgeLabel || 'Demo Document Source';
+  const badgeLabel = data?.badgeLabel || 'Simulation Mode';
   const metrics = data?.metrics || {};
   const logs = data?.recentAuditLogs || [];
 

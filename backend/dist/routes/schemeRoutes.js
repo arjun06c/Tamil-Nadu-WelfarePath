@@ -5,6 +5,8 @@ const schemeController_1 = require("../controllers/schemeController");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
 router.get('/domains', schemeController_1.getAllDomains);
+router.get('/domains/:domainKey', schemeController_1.getDomainByKey);
+router.get('/recommended', authMiddleware_1.authenticateJWT, schemeController_1.getRecommendedSchemes);
 router.get('/', schemeController_1.getAllSchemes);
 router.get('/evaluate-all', authMiddleware_1.authenticateJWT, schemeController_1.evaluateAllSchemesHandler);
 router.get('/:id', schemeController_1.getSchemeById);

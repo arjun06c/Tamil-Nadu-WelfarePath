@@ -10,6 +10,13 @@ import {
   getAdminDigiLockerMetrics,
   getAdminIntegrationHealth
 } from '../controllers/adminController';
+import {
+  createDomainAdmin,
+  updateDomainAdmin,
+  createSchemeAdmin,
+  updateSchemeAdmin,
+  testRulesHandler
+} from '../controllers/schemeController';
 import { authenticateJWT, authorizeRoles } from '../middleware/authMiddleware';
 import { UserRole } from '../models/User';
 
@@ -28,6 +35,13 @@ router.put('/duplicate-flags/:id', updateDuplicateFlagStatus);
 router.get('/analytics', getDashboardAnalytics);
 router.get('/integrations/digilocker', getAdminDigiLockerMetrics);
 router.get('/integrations/health', getAdminIntegrationHealth);
+
+// Admin Welfare Domain & Scheme Management
+router.post('/domains', createDomainAdmin);
+router.patch('/domains/:id', updateDomainAdmin);
+router.post('/schemes', createSchemeAdmin);
+router.patch('/schemes/:id', updateSchemeAdmin);
+router.post('/schemes/rules/test', testRulesHandler);
 
 export default router;
 

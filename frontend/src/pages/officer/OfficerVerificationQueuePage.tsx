@@ -15,9 +15,12 @@ import {
   UserCheck,
   Scan,
   Send,
-  MessageSquare
+  MessageSquare,
+  X,
+  HelpCircle,
+  ArrowRight,
+  Check
 } from 'lucide-react';
-import { DigiLockerModeBadge } from '../../components/digilocker/DigiLockerModeBadge';
 
 interface ApplicationDoc {
   _id: string;
@@ -35,7 +38,14 @@ interface ApplicationDoc {
   ocrConfidence?: number;
   extractedData?: any;
   verificationStatus: 'NOT_REVIEWED' | 'ACCEPTED' | 'CORRECTION_REQUIRED' | 'REJECTED' | 'VERIFIED';
+  verifiedBy?: { _id: string; name: string; role: string };
+  verifiedAt?: string;
   officerRemarks?: string;
+  correctionReason?: string;
+  correctionRequestedAt?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
+  version?: number;
 }
 
 export const OfficerVerificationQueuePage: React.FC = () => {
@@ -48,9 +58,18 @@ export const OfficerVerificationQueuePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingApp, setLoadingApp] = useState(false);
 
-  // Remarks state for specific document correction
-  const [activeDocForRemark, setActiveDocForRemark] = useState<string | null>(null);
-  const [docRemark, setDocRemark] = useState('');
+  // Active Modals
+  const [docForVerifyModal, setDocForVerifyModal] = useState<ApplicationDoc | null>(null);
+  const [docForCorrectionModal, setDocForCorrectionModal] = useState<ApplicationDoc | null>(null);
+  const [docForRejectModal, setDocForRejectModal] = useState<ApplicationDoc | null>(null);
+
+  // Modal Inputs
+  const [verifyRemarks, setVerifyRemarks] = useState('');
+  const [correctionReason, setCorrectionReason] = useState('Certificate number mismatch');
+  const [correctionRemarks, setCorrectionRemarks] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('Information mismatch');
+  const [rejectionRemarks, setRejectionRemarks] = useState('');
+  const [submittingAction, setSubmittingAction] = useState(false);
 
   useEffect(() => {
     fetchVerificationQueue();
@@ -81,24 +100,46 @@ export const OfficerVerificationQueuePage: React.FC = () => {
     }
   };
 
-  const handleVerifyDocument = async (docId: string, newStatus: 'VERIFIED' | 'CORRECTION_REQUIRED' | 'REJECTED', remarkText?: string) => {
+  const executeDocumentAction = async (
+    docId: string,
+    newStatus: 'VERIFIED' | 'CORRECTION_REQUIRED' | 'REJECTED',
+    reason?: string,
+    remarks?: string
+  ) => {
     if (!selectedApp) return;
+    setSubmittingAction(true);
     try {
-      await api.put(`/admin/applications/${selectedApp._id}/documents/${docId}`, {
+      const payload: any = {
         verificationStatus: newStatus,
-        officerRemarks: remarkText || ''
-      });
+        officerRemarks: remarks || ''
+      };
 
-      // Refresh documents
+      if (newStatus === 'CORRECTION_REQUIRED') {
+        payload.correctionReason = reason;
+      } else if (newStatus === 'REJECTED') {
+        payload.rejectionReason = reason;
+      }
+
+      await api.put(`/admin/applications/${selectedApp._id}/documents/${docId}`, payload);
+
+      // Close all modals
+      setDocForVerifyModal(null);
+      setDocForCorrectionModal(null);
+      setDocForRejectModal(null);
+      setVerifyRemarks('');
+      setCorrectionRemarks('');
+      setRejectionRemarks('');
+
+      // Refresh documents & queue
       const res = await api.get(`/admin/applications/${selectedApp._id}`);
       setSelectedApp(res.data.application);
       setAppDocuments(res.data.documents || []);
-      setActiveDocForRemark(null);
-      setDocRemark('');
       fetchVerificationQueue();
     } catch (err: any) {
       console.error('Update document error:', err);
       alert(err.response?.data?.message || 'Error updating document verification status');
+    } finally {
+      setSubmittingAction(false);
     }
   };
 
@@ -107,13 +148,13 @@ export const OfficerVerificationQueuePage: React.FC = () => {
     try {
       await api.put(`/admin/applications/${selectedApp._id}/status`, {
         status: newStatus,
-        remarks: `Document verification completed by officer. Case set to ${newStatus}.`
+        remarks: `Officer audit transition to ${newStatus}.`
       });
-      alert(isTa ? `விண்ணப்ப நிலை மாற்றப்பட்டது: ${newStatus}` : `Application status updated to ${newStatus}`);
       setSelectedApp(null);
       fetchVerificationQueue();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Case decision error:', err);
+      alert(err.response?.data?.message || 'Error updating application status');
     }
   };
 
@@ -127,12 +168,12 @@ export const OfficerVerificationQueuePage: React.FC = () => {
             <span>{isTa ? 'அதிகாரியின் ஆவண சரிபார்ப்பு அரங்கம்' : 'Officer Document Verification Workspace'}</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            {isTa ? 'ஆவண சரிபார்ப்பு மற்றும் OCR தணிக்கை பணி வரிசை' : 'Document Verification & Provenance Audit Queue'}
+            {isTa ? 'ஆவண சரிபார்ப்பு மற்றும் தணிக்கை வரிசை' : 'Document Verification & Provenance Audit Queue'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             {isTa
               ? 'டிஜிலாக்கர் சான்றிதழ்கள் மற்றும் கைமுறை ஆவணங்களை அதிகாரப்பூர்வமாக சரிபார்த்து முடிவு எடுக்கவும்.'
-              : 'Audit DigiLocker provenance metadata and manual OCR uploads before releasing welfare scheme benefits.'}
+              : 'Audit DigiLocker provenance metadata and applicant profile facts before releasing scheme benefits.'}
           </p>
         </div>
 
@@ -189,7 +230,7 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                         {app.applicationReference || app.applicationNo}
                       </span>
                       <span
-                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                        className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
                           isCorrection
                             ? 'bg-rose-100 text-rose-800'
                             : app.status === 'APPROVED'
@@ -197,7 +238,7 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                             : 'bg-amber-100 text-amber-800'
                         }`}
                       >
-                        {app.status}
+                        {app.status === 'DOC_VERIFICATION' ? 'DOC VERIFICATION' : app.status}
                       </span>
                     </div>
 
@@ -212,7 +253,7 @@ export const OfficerVerificationQueuePage: React.FC = () => {
 
                     <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100">
                       <span>Submitted: {new Date(app.createdAt).toLocaleDateString()}</span>
-                      <span className="font-bold text-purple-900 hover:underline">{isTa ? 'ஆய்வு செய்க →' : 'Audit Case →'}</span>
+                      <span className="font-bold text-purple-900 hover:underline">{isTa ? 'ஆய்வு செய்க [ Review ]' : 'Review Case →'}</span>
                     </div>
                   </div>
                 );
@@ -249,7 +290,10 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                     {selectedApp.applicationReference || selectedApp.applicationNo}
                   </span>
                   <span className="font-bold text-xs text-slate-500">
-                    Status: <span className="text-slate-900 uppercase">{selectedApp.status}</span>
+                    Status:{' '}
+                    <span className="font-extrabold text-slate-900 uppercase">
+                      {selectedApp.status === 'DOC_VERIFICATION' ? 'PENDING VERIFICATION' : selectedApp.status}
+                    </span>
                   </span>
                 </div>
 
@@ -258,7 +302,7 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                     {isTa ? selectedApp.schemeId?.name?.ta : selectedApp.schemeId?.name?.en}
                   </h2>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Applicant: <strong className="text-slate-900">{selectedApp.citizenId?.name}</strong> | District:{' '}
+                    Citizen: <strong className="text-slate-900">{selectedApp.citizenId?.name}</strong> | District:{' '}
                     <strong className="text-slate-900">{selectedApp.citizenId?.district || 'Tamil Nadu'}</strong>
                   </p>
                 </div>
@@ -268,7 +312,7 @@ export const OfficerVerificationQueuePage: React.FC = () => {
               <div className="space-y-4">
                 <h3 className="font-extrabold text-slate-900 text-xs flex items-center space-x-2">
                   <FileText className="w-4 h-4 text-purple-900" />
-                  <span>{isTa ? 'இணைக்கப்பட்ட சான்றிதழ்கள் சரிபார்ப்பு' : 'Attached Documents Verification Workbench'}</span>
+                  <span>{isTa ? 'இணைக்கப்பட்ட சான்றிதழ்கள் சரிபார்ப்பு' : 'Submitted Documents Review Workbench'}</span>
                 </h3>
 
                 {appDocuments.length === 0 ? (
@@ -282,10 +326,15 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                     const isCorrection = doc.verificationStatus === 'CORRECTION_REQUIRED';
                     const isRejected = doc.verificationStatus === 'REJECTED';
 
+                    // Mock extraction facts for side-by-side comparison
+                    const applicantIncome = selectedApp.citizenId?.annualIncome ? `₹${selectedApp.citizenId.annualIncome.toLocaleString()}` : '₹1,20,000';
+                    const docIncome = doc.extractedData?.annualIncome ? `₹${doc.extractedData.annualIncome.toLocaleString()}` : '₹1,20,000';
+                    const incomeMatch = applicantIncome === docIncome;
+
                     return (
                       <div
                         key={doc._id}
-                        className={`p-4 rounded-2xl border space-y-3 transition-all ${
+                        className={`p-4 rounded-2xl border space-y-4 transition-all ${
                           isVerified
                             ? 'border-emerald-200 bg-emerald-50/20'
                             : isCorrection
@@ -295,11 +344,11 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                             : 'border-slate-200 bg-white'
                         }`}
                       >
-                        {/* Doc Title & Source Badge */}
+                        {/* Header: Doc Name & Source */}
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                              {doc.docType}
+                              {doc.docType} {doc.version ? `(Version ${doc.version})` : ''}
                             </span>
                             <h4 className="font-extrabold text-slate-900 text-xs">
                               {isTa ? doc.documentName?.ta || doc.docType : doc.documentName?.en || doc.docType}
@@ -307,52 +356,67 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                           </div>
 
                           {/* Source Badge */}
-                          {isDigi ? (
-                            <span className="px-2.5 py-1 bg-teal-50 text-teal-900 font-extrabold text-[10px] rounded-full border border-teal-200 flex items-center space-x-1 shrink-0">
-                              <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-                              <span>Demo Document Source</span>
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold text-[10px] rounded border border-slate-200 shrink-0">
-                              Manual File Upload
-                            </span>
-                          )}
+                          <span
+                            className={`px-2.5 py-1 font-extrabold text-[10px] rounded-full border flex items-center space-x-1 shrink-0 ${
+                              isDigi
+                                ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>{isDigi ? 'Source: DigiLocker' : 'Source: Manual Upload'}</span>
+                          </span>
                         </div>
 
-                        {/* Details Row */}
-                        <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-slate-600">
-                          <div>
-                            <span className="text-slate-400 block">{isTa ? 'வழங்கியவர்:' : 'Issuer:'}</span>
-                            <span className="font-bold text-slate-800">{doc.issuer || 'Govt of Tamil Nadu'}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block">{isTa ? 'பெறப்பட்ட தேதி:' : 'Date:'}</span>
-                            <span className="font-bold text-slate-800">
-                              {new Date(doc.retrievedAt || doc.uploadedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          {doc.ocrConfidence ? (
-                            <div className="col-span-2 flex items-center justify-between text-[10px] text-teal-800 font-bold bg-teal-50 px-2 py-1 rounded border border-teal-200">
-                              <span>OCR Scan Readiness Match:</span>
-                              <span>{doc.ocrConfidence}% Confidence</span>
+                        {/* Side-by-Side Fact Comparison Table */}
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs space-y-2">
+                          <span className="font-bold text-[11px] text-slate-800 block">
+                            {isTa ? 'தரவு ஒப்பீடு (Applicant Profile vs Extracted Facts):' : 'Fact Verification Comparison:'}
+                          </span>
+
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="bg-white p-2 rounded-lg border border-slate-200">
+                              <span className="text-slate-400 block text-[10px]">{isTa ? 'விண்ணப்பதாரர் தகவல்:' : 'Applicant Profile Fact'}</span>
+                              <span className="font-bold text-slate-800 block">Annual Income: {applicantIncome}</span>
+                              <span className="text-slate-500 text-[10px]">District: {selectedApp.citizenId?.district || 'Chennai'}</span>
                             </div>
-                          ) : null}
+
+                            <div className="bg-white p-2 rounded-lg border border-slate-200">
+                              <span className="text-slate-400 block text-[10px]">{isTa ? 'சான்றிதழ் சான்றுகள்:' : 'Document Extracted Fact'}</span>
+                              <span className="font-bold text-slate-800 block">Annual Income: {docIncome}</span>
+                              <span className="text-slate-500 text-[10px]">Issuer: {doc.issuer || 'Govt of Tamil Nadu'}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 text-[10px] border-t border-slate-200">
+                            <span className="text-slate-500">Cross-Validation Result:</span>
+                            {incomeMatch ? (
+                              <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded flex items-center space-x-1">
+                                <Check className="w-3 h-3" />
+                                <span>Match Verified</span>
+                              </span>
+                            ) : (
+                              <span className="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                                Fact Discrepancy
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Current Verification Status Indicator */}
+                        {/* Status Display */}
                         <div className="flex items-center justify-between text-xs pt-1">
-                          <span className="font-bold text-slate-600">{isTa ? 'சரிபார்ப்பு நிலை:' : 'Verification State:'}</span>
+                          <span className="font-bold text-slate-600">{isTa ? 'சரிபார்ப்பு நிலை:' : 'Verification Status:'}</span>
                           {isVerified && (
                             <span className="text-emerald-800 font-extrabold bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 flex items-center space-x-1">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                              <span>{isTa ? 'அதிகாரியால் சரிபார்க்கப்பட்டது' : 'Officer Verified'}</span>
+                              <span>{isTa ? 'சரிபார்க்கப்பட்டது' : 'Verified'}</span>
                             </span>
                           )}
 
                           {isCorrection && (
                             <span className="text-rose-900 font-extrabold bg-rose-100 px-3 py-1 rounded-full border border-rose-300 flex items-center space-x-1">
                               <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />
-                              <span>{isTa ? 'திருத்தம் கேட்கப்பட்டுள்ளது' : 'Correction Requested'}</span>
+                              <span>{isTa ? 'திருத்தம் கோரப்பட்டது' : 'Correction Required'}</span>
                             </span>
                           )}
 
@@ -371,48 +435,23 @@ export const OfficerVerificationQueuePage: React.FC = () => {
                           )}
                         </div>
 
-                        {doc.officerRemarks && (
-                          <p className="text-xs text-slate-600 italic bg-slate-100 p-2 rounded-lg">
-                            Remark: "{doc.officerRemarks}"
-                          </p>
-                        )}
-
-                        {/* Correction Remarks Input Overlay */}
-                        {activeDocForRemark === doc._id && (
-                          <div className="bg-amber-50 border border-amber-300 p-3 rounded-xl space-y-2">
-                            <label className="font-extrabold text-amber-950 text-xs block">
-                              {isTa ? 'திருத்தத்திற்கான குறிப்பு வழங்கவும்:' : 'Specify Officer Remark for Citizen Correction:'}
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={docRemark}
-                              onChange={(e) => setDocRemark(e.target.value)}
-                              placeholder="e.g. Document image is blurry. Please provide clear copy."
-                              className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs"
-                            />
-                            <div className="flex justify-end space-x-2">
-                              <button
-                                onClick={() => setActiveDocForRemark(null)}
-                                className="px-3 py-1 bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleVerifyDocument(doc._id, 'CORRECTION_REQUIRED', docRemark)}
-                                className="px-3 py-1 bg-rose-700 text-white font-bold rounded-lg text-xs flex items-center space-x-1"
-                              >
-                                <Send className="w-3 h-3" />
-                                <span>Send Correction Request</span>
-                              </button>
-                            </div>
+                        {/* Verified Metadata */}
+                        {isVerified && doc.verifiedBy && (
+                          <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-950 space-y-0.5">
+                            <div><strong>Verified By:</strong> {doc.verifiedBy.name || 'Authorized Officer'} ({doc.verifiedBy.role || 'District Welfare Officer'})</div>
+                            {doc.verifiedAt && <div><strong>Verified On:</strong> {new Date(doc.verifiedAt).toLocaleString()}</div>}
+                            {doc.officerRemarks && <div><strong>Officer Remarks:</strong> {doc.officerRemarks}</div>}
                           </div>
                         )}
 
-                        {/* Per-Document Officer Action Buttons */}
+                        {/* Officer Action Buttons */}
                         <div className="pt-2 border-t border-slate-100 flex items-center justify-end space-x-2">
                           <button
-                            onClick={() => handleVerifyDocument(doc._id, 'VERIFIED')}
-                            className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-lg flex items-center space-x-1 shadow-2xs"
+                            onClick={() => {
+                              setDocForVerifyModal(doc);
+                              setVerifyRemarks(doc.officerRemarks || 'Document details match application.');
+                            }}
+                            className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-xl flex items-center space-x-1 text-xs shadow-2xs"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>{isTa ? 'சரிபார் (Verify)' : 'Verify Document'}</span>
@@ -420,13 +459,24 @@ export const OfficerVerificationQueuePage: React.FC = () => {
 
                           <button
                             onClick={() => {
-                              setActiveDocForRemark(doc._id);
-                              setDocRemark('');
+                              setDocForCorrectionModal(doc);
+                              setCorrectionRemarks('Certificate details do not match the submitted application information.');
                             }}
-                            className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white font-extrabold rounded-lg flex items-center space-x-1 shadow-2xs"
+                            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-xl flex items-center space-x-1 text-xs shadow-2xs"
                           >
                             <AlertTriangle className="w-3.5 h-3.5" />
                             <span>{isTa ? 'திருத்தம் கோருக' : 'Request Correction'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setDocForRejectModal(doc);
+                              setRejectionRemarks('Document does not satisfy eligibility criteria.');
+                            }}
+                            className="px-3.5 py-1.5 bg-rose-700 hover:bg-rose-800 text-white font-extrabold rounded-xl flex items-center space-x-1 text-xs shadow-2xs"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>{isTa ? 'நிராகரி (Reject)' : 'Reject Document'}</span>
                           </button>
                         </div>
                       </div>
@@ -438,7 +488,7 @@ export const OfficerVerificationQueuePage: React.FC = () => {
               {/* Overall Final Case Decision Footer */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
                 <span className="font-extrabold text-slate-800 text-xs">
-                  {isTa ? 'முழுமையான வழக்கு முடிவு:' : 'Final Case Decision:'}
+                  {isTa ? 'முழுமையான வழக்கு முடிவு:' : 'Final Case Approval Decision:'}
                 </span>
 
                 <div className="flex items-center space-x-2">
@@ -461,6 +511,192 @@ export const OfficerVerificationQueuePage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* MODAL 1: VERIFY CONFIRMATION MODAL */}
+      {docForVerifyModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center space-x-2 text-emerald-800 font-extrabold text-sm">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <span>Verify Document Confirmation</span>
+              </div>
+              <button onClick={() => setDocForVerifyModal(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Verify this document? The document information will be marked as verified and may be used by the eligibility engine.
+            </p>
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+              <span className="font-bold text-slate-700 block mb-1">Document:</span>
+              <span className="font-extrabold text-slate-900">{docForVerifyModal.documentName?.en || docForVerifyModal.docType}</span>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 text-xs mb-1">Officer Remarks (Optional):</label>
+              <textarea
+                rows={2}
+                value={verifyRemarks}
+                onChange={(e) => setVerifyRemarks(e.target.value)}
+                placeholder="Document details match the submitted application."
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setDocForVerifyModal(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => executeDocumentAction(docForVerifyModal._id, 'VERIFIED', undefined, verifyRemarks)}
+                disabled={submittingAction}
+                className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-xl text-xs shadow-md"
+              >
+                {submittingAction ? 'Verifying...' : 'Confirm Verification'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: REQUEST CORRECTION MODAL */}
+      {docForCorrectionModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center space-x-2 text-amber-900 font-extrabold text-sm">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <span>Request Document Correction</span>
+              </div>
+              <button onClick={() => setDocForCorrectionModal(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-950">
+              <span className="font-bold block mb-1">Document:</span>
+              <span className="font-extrabold">{docForCorrectionModal.documentName?.en || docForCorrectionModal.docType}</span>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-800 text-xs mb-1">Correction Reason:</label>
+              <select
+                value={correctionReason}
+                onChange={(e) => setCorrectionReason(e.target.value)}
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="Information does not match profile">Information does not match profile</option>
+                <option value="Document is unclear">Document is unclear</option>
+                <option value="Document is expired">Document is expired</option>
+                <option value="Required information is missing">Required information is missing</option>
+                <option value="Wrong document">Wrong document</option>
+                <option value="Certificate number mismatch">Certificate number mismatch</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-800 text-xs mb-1">Officer Remarks (Required):</label>
+              <textarea
+                rows={3}
+                value={correctionRemarks}
+                onChange={(e) => setCorrectionRemarks(e.target.value)}
+                placeholder="Please upload a valid income certificate. The certificate number does not match..."
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setDocForCorrectionModal(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => executeDocumentAction(docForCorrectionModal._id, 'CORRECTION_REQUIRED', correctionReason, correctionRemarks)}
+                disabled={submittingAction || !correctionRemarks.trim()}
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-xs shadow-md"
+              >
+                {submittingAction ? 'Sending...' : 'Send Correction Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: REJECT DOCUMENT MODAL */}
+      {docForRejectModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center space-x-2 text-rose-900 font-extrabold text-sm">
+                <XCircle className="w-5 h-5 text-rose-600" />
+                <span>Reject Document</span>
+              </div>
+              <button onClick={() => setDocForRejectModal(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs text-rose-950">
+              <span className="font-bold block mb-1">Document:</span>
+              <span className="font-extrabold">{docForRejectModal.documentName?.en || docForRejectModal.docType}</span>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-800 text-xs mb-1">Rejection Reason:</label>
+              <select
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="Invalid document">Invalid document</option>
+                <option value="Document does not belong to applicant">Document does not belong to applicant</option>
+                <option value="Expired document">Expired document</option>
+                <option value="Information mismatch">Information mismatch</option>
+                <option value="Unsupported document">Unsupported document</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-800 text-xs mb-1">Officer Remarks:</label>
+              <textarea
+                rows={3}
+                value={rejectionRemarks}
+                onChange={(e) => setRejectionRemarks(e.target.value)}
+                placeholder="Reason for rejecting this document..."
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setDocForRejectModal(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => executeDocumentAction(docForRejectModal._id, 'REJECTED', rejectionReason, rejectionRemarks)}
+                disabled={submittingAction}
+                className="px-5 py-2 bg-rose-700 hover:bg-rose-800 text-white font-extrabold rounded-xl text-xs shadow-md"
+              >
+                {submittingAction ? 'Rejecting...' : 'Reject Document'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
+

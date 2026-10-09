@@ -78,6 +78,17 @@ const ApplicationDocumentSchema = new mongoose_1.Schema({
         default: 'NOT_REVIEWED'
     },
     officerRemarks: { type: String, default: '' },
+    version: { type: Number, default: 1 },
+    previousVersionId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'ApplicationDocument' },
+    isCurrentVersion: { type: Boolean, default: true },
+    correctionReason: { type: String, default: '' },
+    correctionRequestedAt: { type: Date },
+    correctionRequestedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+    rejectionReason: { type: String, default: '' },
+    rejectedAt: { type: Date },
+    rejectedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+    resubmittedAt: { type: Date },
+    resubmittedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
     uploadedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 exports.ApplicationDocument = mongoose_1.default.model('ApplicationDocument', ApplicationDocumentSchema);

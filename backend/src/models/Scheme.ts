@@ -2,8 +2,30 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IRuleCondition {
   field: string;
-  operator: 'equals' | 'not_equals' | 'greater_than_or_equal' | 'less_than_or_equal' | 'in' | 'not_in' | 'contains';
+  operator:
+    | 'equals'
+    | '='
+    | 'not_equals'
+    | '!='
+    | 'greater_than'
+    | '>'
+    | 'greater_than_or_equal'
+    | '>='
+    | 'less_than'
+    | '<'
+    | 'less_than_or_equal'
+    | '<='
+    | 'between'
+    | 'in'
+    | 'not_in'
+    | 'contains'
+    | 'is_true'
+    | 'is_false'
+    | 'exists'
+    | 'does_not_exist';
   value: any;
+  valueSecondary?: any;
+  frequency?: 'Monthly' | 'Annual';
   label: {
     en: string;
     ta: string;
@@ -14,6 +36,8 @@ export interface IRuleCondition {
 export interface ISchemeRules {
   all?: IRuleCondition[];
   any?: IRuleCondition[];
+  exclusions?: IRuleCondition[];
+  none?: IRuleCondition[];
 }
 
 export interface IRequiredDocumentConfig {
@@ -65,6 +89,10 @@ export interface IScheme extends Document {
     en: string;
     ta: string;
   };
+  shortDescription?: {
+    en: string;
+    ta: string;
+  };
   benefitSummary: {
     en: string;
     ta: string;
@@ -81,6 +109,8 @@ export interface IScheme extends Document {
   lastVerifiedDate: string;
   ruleVersion: string;
   isActive: boolean;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  isDemoData: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -100,6 +130,10 @@ const SchemeSchema: Schema = new Schema(
     description: {
       en: { type: String, required: true },
       ta: { type: String, required: true }
+    },
+    shortDescription: {
+      en: { type: String, default: '' },
+      ta: { type: String, default: '' }
     },
     benefitSummary: {
       en: { type: String, required: true },
@@ -150,7 +184,9 @@ const SchemeSchema: Schema = new Schema(
     officialUrl: { type: String, default: 'https://tn.gov.in' },
     lastVerifiedDate: { type: String, default: '2026-01-01' },
     ruleVersion: { type: String, default: '1.0' },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'], default: 'PUBLISHED' },
+    isDemoData: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

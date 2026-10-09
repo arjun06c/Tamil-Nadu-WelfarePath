@@ -1,38 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../lib/api';
 import {
   LayoutDashboard,
   User,
+  BadgeCheck,
   Search,
   ShieldCheck,
   FolderKanban,
   FileCheck,
   Award,
   Scan,
-  Bot,
   Bookmark,
   Bell,
-  HelpCircle,
-  LogOut
+  LogOut,
+  Loader2
 } from 'lucide-react';
 
 export const CitizenSidebar: React.FC = () => {
-  const { user, lang, logout } = useAuth();
+  const { user, profile, lang, logout } = useAuth();
   const { t } = useTranslation();
   const isTa = lang === 'ta';
 
+  const [eligibleCount, setEligibleCount] = useState<number | null>(null);
+  const [loadingBadge, setLoadingBadge] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetchEligibleBadgeCount();
+
+    const handleProfileUpdated = () => {
+      fetchEligibleBadgeCount();
+    };
+
+    window.addEventListener('profile-updated', handleProfileUpdated);
+    return () => {
+      window.removeEventListener('profile-updated', handleProfileUpdated);
+    };
+  }, [profile]);
+
+  const fetchEligibleBadgeCount = async () => {
+    setLoadingBadge(true);
+    try {
+      const res = await api.get('/schemes/recommended');
+      if (res.data?.summary) {
+        setEligibleCount(res.data.summary.totalEligibleCount ?? 0);
+      } else if (Array.isArray(res.data?.recommendations)) {
+        setEligibleCount(res.data.recommendations.length);
+      } else {
+        setEligibleCount(0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch eligible badge count:', err);
+      setEligibleCount(0);
+    } finally {
+      setLoadingBadge(false);
+    }
+  };
+
   const menu = [
     { path: '/citizen/dashboard', labelEn: 'Dashboard', labelTa: 'டாஷ்போர்டு', icon: LayoutDashboard },
-    { path: '/citizen/profile', labelEn: 'My Profile', labelTa: 'என் சுயவிவரம்', icon: User },
+    {
+      path: '/citizen/eligible-schemes',
+      labelEn: 'My Eligible Schemes',
+      labelTa: 'எனக்கு தகுதியானவை',
+      icon: BadgeCheck,
+      hasBadge: true
+    },
     { path: '/citizen/schemes', labelEn: 'Discover Schemes', labelTa: 'நலத்திட்டங்கள்', icon: Search },
     { path: '/citizen/portfolio', labelEn: 'Welfare Portfolio', labelTa: 'என் நலன்பாதை', icon: FolderKanban },
     { path: '/citizen/applications', labelEn: 'My Applications', labelTa: 'என் விண்ணப்பங்கள்', icon: FileCheck },
     { path: '/citizen/benefits', labelEn: 'Approved Benefits', labelTa: 'பெறப்பட்ட உதவிகள்', icon: Award },
     { path: '/citizen/documents', labelEn: 'Document Center', labelTa: 'ஆவண மையம்', icon: Scan },
     { path: '/citizen/settings/digilocker', labelEn: 'DigiLocker Integration', labelTa: 'டிஜிலாக்கர் இணைப்பு', icon: ShieldCheck },
-    { path: '/citizen/assistant', labelEn: 'Welfare Assistant', labelTa: 'நல உதவியாளன்', icon: Bot },
     { path: '/citizen/saved-schemes', labelEn: 'Saved Schemes', labelTa: 'சேமித்த திட்டங்கள்', icon: Bookmark },
     { path: '/citizen/notifications', labelEn: 'Notifications', labelTa: 'அறிவிப்புகள்', icon: Bell },
   ];
@@ -67,15 +108,29 @@ export const CitizenSidebar: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isActive
                       ? 'bg-blue-900 text-white shadow-sm font-bold'
                       : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
                   }`
                 }
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{label}</span>
+                <div className="flex items-center space-x-3 min-w-0 truncate">
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </div>
+
+                {item.hasBadge && (
+                  <div className="ml-2 shrink-0">
+                    {loadingBadge ? (
+                      <Loader2 className="w-3 h-3 text-teal-400 animate-spin" />
+                    ) : (
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40">
+                        {eligibleCount ?? 0}
+                      </span>
+                    )}
+                  </div>
+                )}
               </NavLink>
             );
           })}

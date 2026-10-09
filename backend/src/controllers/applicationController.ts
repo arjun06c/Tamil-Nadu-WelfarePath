@@ -22,6 +22,20 @@ export const submitApplication = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
+    // Backend Mandatory Document Validation Check (Requirement 1 & 23)
+    const mandatoryConfigs = scheme.requiredDocuments?.filter((r: any) => r.isMandatory !== false) || [];
+    const providedDocTypes = (documents || []).map((d: any) => d.docType);
+    const missingMandatoryDocs = mandatoryConfigs.filter((cfg: any) => !providedDocTypes.includes(cfg.docType));
+
+    if (missingMandatoryDocs.length > 0) {
+      res.status(400).json({
+        canProceed: false,
+        message: 'Cannot submit application: All mandatory scheme documents must be provided.',
+        missingDocuments: missingMandatoryDocs.map((m: any) => m.label?.en || m.docType)
+      });
+      return;
+    }
+
     // Generate Secure Unique Reference Number: TNP-WP-2026-XXXXXX
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
     const applicationReference = `TNP-WP-2026-${randomSuffix}`;
@@ -136,14 +150,22 @@ export const getApplicationById = async (req: AuthRequest, res: Response): Promi
     const { id } = req.params;
     const application = await Application.findById(id)
       .populate('schemeId')
-      .populate('citizenId', 'name email mobile district');
+      .populate('citizenId', 'name email mobile district')
+      .populate('approvedBy', 'name role district email')
+      .populate('rejectedBy', 'name role district email')
+      .populate('statusHistory.changedBy', 'name role district');
       
     if (!application) {
       res.status(404).json({ message: 'Application not found' });
       return;
     }
 
-    const documents = await ApplicationDocument.find({ applicationId: application._id });
+    const documents = await ApplicationDocument.find({ applicationId: application._id })
+      .populate('verifiedBy', 'name role district email')
+      .populate('correctionRequestedBy', 'name role district email')
+      .populate('rejectedBy', 'name role district email')
+      .sort({ version: -1, createdAt: -1 });
+
     const benefitRecord = await BenefitRecord.findOne({ applicationId: application._id });
 
     res.status(200).json({
@@ -164,12 +186,14 @@ export const getMyDocuments = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    const documents = await ApplicationDocument.find({ citizenId: req.user.id })
+    const documents = await ApplicationDocument.find({ citizenId: req.user.id, isCurrentVersion: true })
       .populate({
         path: 'applicationId',
         select: 'applicationReference status schemeId',
         populate: { path: 'schemeId', select: 'name' }
       })
+      .populate('verifiedBy', 'name role district email')
+      .populate('correctionRequestedBy', 'name role district email')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -197,25 +221,46 @@ export const resubmitCorrection = async (req: AuthRequest, res: Response): Promi
       return;
     }
 
-    // Replace or add document
+    let newDoc = null;
+
+    // Document Versioning: Keep old document record in history, create new version
     if (replacementDoc) {
-      await ApplicationDocument.findOneAndUpdate(
-        { applicationId: application._id, docType: replacementDoc.docType },
-        {
-          fileName: replacementDoc.fileName || 'Document.pdf',
-          fileUrl: replacementDoc.fileUrl || 'https://via.placeholder.com/600x800',
-          source: replacementDoc.source || 'MANUAL_UPLOAD',
-          sourceReference: replacementDoc.sourceReference || '',
-          issuer: replacementDoc.issuer || '',
-          issueDate: replacementDoc.issueDate || '',
-          retrievedAt: replacementDoc.retrievedAt ? new Date(replacementDoc.retrievedAt) : undefined,
-          uploadStatus: replacementDoc.source === 'DIGILOCKER' ? 'RETRIEVED' : 'UPLOADED',
-          verificationStatus: 'NOT_REVIEWED',
-          ocrConfidence: replacementDoc.ocrConfidence || 80,
-          uploadedAt: new Date()
-        },
-        { upsert: true }
-      );
+      const existingDoc = await ApplicationDocument.findOne({
+        applicationId: application._id,
+        docType: replacementDoc.docType,
+        isCurrentVersion: true
+      });
+
+      if (existingDoc) {
+        existingDoc.isCurrentVersion = false;
+        await existingDoc.save();
+      }
+
+      newDoc = await ApplicationDocument.create({
+        applicationId: application._id,
+        citizenId: req.user.id,
+        docType: replacementDoc.docType,
+        documentName: replacementDoc.documentName || existingDoc?.documentName || { en: replacementDoc.docType, ta: replacementDoc.docType },
+        fileName: replacementDoc.fileName || 'Document.pdf',
+        fileUrl: replacementDoc.fileUrl || 'https://via.placeholder.com/600x800',
+        fileSize: replacementDoc.fileSize || 2048,
+        mimeType: replacementDoc.mimeType || 'application/pdf',
+        source: replacementDoc.source || 'MANUAL_UPLOAD',
+        sourceReference: replacementDoc.sourceReference || '',
+        issuer: replacementDoc.issuer || existingDoc?.issuer || '',
+        issueDate: replacementDoc.issueDate || existingDoc?.issueDate || '',
+        retrievedAt: replacementDoc.retrievedAt ? new Date(replacementDoc.retrievedAt) : undefined,
+        uploadStatus: replacementDoc.source === 'DIGILOCKER' ? 'RETRIEVED' : 'UPLOADED',
+        verificationStatus: 'NOT_REVIEWED',
+        officerRemarks: '',
+        version: existingDoc ? (existingDoc.version || 1) + 1 : 1,
+        previousVersionId: existingDoc ? existingDoc._id : undefined,
+        isCurrentVersion: true,
+        resubmittedAt: new Date(),
+        resubmittedBy: req.user.id,
+        ocrConfidence: replacementDoc.ocrConfidence || 85,
+        uploadedAt: new Date()
+      });
     }
 
     application.status = ApplicationStatus.DOC_VERIFICATION;
@@ -232,7 +277,8 @@ export const resubmitCorrection = async (req: AuthRequest, res: Response): Promi
 
     res.status(200).json({
       message: 'Correction resubmitted successfully. Case returned to officer review queue.',
-      application
+      application,
+      newDocument: newDoc
     });
   } catch (error) {
     console.error('resubmitCorrection error:', error);

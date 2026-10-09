@@ -51,7 +51,7 @@ export const Navbar: React.FC = () => {
 
             {user && (
               <Link
-                to="/dashboard"
+                to={user.role === 'Officer' ? '/officer/dashboard' : user.role === 'Admin' ? '/admin/dashboard' : '/citizen/dashboard'}
                 className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:text-blue-900 hover:bg-slate-100 transition-colors flex items-center space-x-1"
               >
                 <LayoutDashboard className="w-4 h-4 mr-1" />
@@ -96,7 +96,7 @@ export const Navbar: React.FC = () => {
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
                 <Link
-                  to="/profile"
+                  to="/citizen/profile"
                   className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-900 hover:bg-blue-100 text-xs font-semibold transition-colors"
                 >
                   <User className="w-4 h-4 text-blue-700" />

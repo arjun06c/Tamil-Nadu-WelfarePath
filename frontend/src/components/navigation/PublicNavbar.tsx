@@ -15,7 +15,7 @@ export const PublicNavbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Brand Logo & Academic Prototype Pill */}
+          {/* Brand Logo */}
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-900 via-indigo-900 to-teal-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform duration-200">
               <Award className="w-6 h-6" />
@@ -25,12 +25,9 @@ export const PublicNavbar: React.FC = () => {
                 <span className="text-lg font-bold tracking-tight text-slate-900">
                   {isTa ? 'தமிழ்நாடு நலன்பாதை' : 'Tamil Nadu WelfarePath'}
                 </span>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-100 text-amber-900 border border-amber-300">
-                  ACADEMIC PROTOTYPE
-                </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">
-                {isTa ? 'சுயசார்பு நலத்திட்ட வழிகாட்டி & தகுதி அறிக்கை தளம்' : 'Independent Citizen Welfare Guidance Platform'}
+                {isTa ? 'தனிப்பயனாக்கப்பட்ட குடிமக்கள் நலத் திட்டம்' : 'Personalized Citizen Welfare Platform'}
               </p>
             </div>
           </Link>

@@ -38,7 +38,7 @@ const domainIconMap: Record<string, any> = {
 };
 
 export const LandingPage: React.FC = () => {
-  const { lang } = useAuth();
+  const { user, lang } = useAuth();
   const { t } = useTranslation();
   const isTa = lang === 'ta';
 
@@ -64,6 +64,14 @@ export const LandingPage: React.FC = () => {
     fetchData();
   }, []);
 
+  const eligibilityTarget = user
+    ? user.role === 'Citizen'
+      ? '/citizen/eligible-schemes'
+      : user.role === 'Officer'
+      ? '/officer/dashboard'
+      : '/admin/dashboard'
+    : '/citizen/eligible-schemes';
+
   return (
     <div className="min-h-screen bg-slate-50 hero-gradient">
       
@@ -82,7 +90,7 @@ export const LandingPage: React.FC = () => {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
               {isTa ? 'தமிழ்நாடு நலன்பாதை' : 'Tamil Nadu WelfarePath'}
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-900 via-indigo-800 to-teal-600 mt-2">
-                {isTa ? 'மக்களுக்கான எளிய அரசு நலத்திட்ட வழிகாட்டி' : 'Personalized Citizen Welfare Journey'}
+                {t('hero.highlightTitle')}
               </span>
             </h1>
 
@@ -94,7 +102,7 @@ export const LandingPage: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                to="/dashboard"
+                to={eligibilityTarget}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-900 via-indigo-900 to-teal-800 hover:from-blue-800 hover:to-teal-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-900/20 hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2"
               >
                 <span>{t('hero.discoverCta')}</span>

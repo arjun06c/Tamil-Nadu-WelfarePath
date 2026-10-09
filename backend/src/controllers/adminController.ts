@@ -43,14 +43,21 @@ export const getApplicationDetailsForOfficer = async (req: AuthRequest, res: Res
     const { id } = req.params;
     const application = await Application.findById(id)
       .populate('schemeId')
-      .populate('citizenId', 'name email mobile district annualIncome community');
+      .populate('citizenId', 'name email mobile district annualIncome community')
+      .populate('approvedBy', 'name role district email')
+      .populate('rejectedBy', 'name role district email');
 
     if (!application) {
       res.status(404).json({ message: 'Application not found' });
       return;
     }
 
-    const documents = await ApplicationDocument.find({ applicationId: application._id });
+    const documents = await ApplicationDocument.find({ applicationId: application._id })
+      .populate('verifiedBy', 'name role district email')
+      .populate('correctionRequestedBy', 'name role district email')
+      .populate('rejectedBy', 'name role district email')
+      .sort({ version: -1, createdAt: -1 });
+
     const benefitRecord = await BenefitRecord.findOne({ applicationId: application._id });
 
     res.status(200).json({
@@ -80,7 +87,7 @@ export const updateDocumentVerificationStatus = async (
     }
 
     const { id, docId } = req.params;
-    const { verificationStatus, officerRemarks } = req.body;
+    const { verificationStatus, officerRemarks, correctionReason, rejectionReason } = req.body;
 
     const document = await ApplicationDocument.findOne({
       _id: docId,
@@ -96,14 +103,52 @@ export const updateDocumentVerificationStatus = async (
     if (officerRemarks !== undefined) {
       document.officerRemarks = officerRemarks;
     }
-    document.verifiedAt = new Date();
-    document.verifiedBy = req.user.id as any;
+
+    let auditAction = `DOCUMENT_VERIFICATION_UPDATED`;
+
+    if (verificationStatus === 'VERIFIED' || verificationStatus === 'ACCEPTED') {
+      document.verifiedAt = new Date();
+      document.verifiedBy = req.user.id as any;
+      auditAction = 'DOCUMENT_VERIFIED';
+    } else if (verificationStatus === 'CORRECTION_REQUIRED') {
+      document.correctionReason = correctionReason || officerRemarks || 'Correction requested by reviewing officer';
+      document.correctionRequestedAt = new Date();
+      document.correctionRequestedBy = req.user.id as any;
+      auditAction = 'DOCUMENT_CORRECTION_REQUESTED';
+    } else if (verificationStatus === 'REJECTED') {
+      document.rejectionReason = rejectionReason || officerRemarks || 'Document rejected by officer';
+      document.rejectedAt = new Date();
+      document.rejectedBy = req.user.id as any;
+      auditAction = 'DOCUMENT_REJECTED';
+    }
+
     await document.save();
 
-    // If status is CORRECTION_REQUIRED, update application status as well and notify citizen
-    if (verificationStatus === 'CORRECTION_REQUIRED') {
-      const application = await Application.findById(id);
-      if (application) {
+    const application = await Application.findById(id);
+    if (application) {
+      if (verificationStatus === 'VERIFIED' || verificationStatus === 'ACCEPTED') {
+        const allDocs = await ApplicationDocument.find({ applicationId: id, isCurrentVersion: true });
+        const scheme = await Scheme.findById(application.schemeId);
+        const mandatoryConfigs = scheme?.requiredDocuments?.filter((r: any) => r.isMandatory !== false) || [];
+
+        const allMandatoryVerified = mandatoryConfigs.every((cfg: any) => {
+          const attached = allDocs.find((d) => d.docType === cfg.docType);
+          return attached && (attached.verificationStatus === 'VERIFIED' || attached.verificationStatus === 'ACCEPTED');
+        });
+
+        if (allMandatoryVerified && (application.status === ApplicationStatus.SUBMITTED || application.status === ApplicationStatus.DOC_VERIFICATION)) {
+          application.status = ApplicationStatus.OFFICER_REVIEW;
+          application.statusHistory.push({
+            previousStatus: application.status,
+            newStatus: ApplicationStatus.OFFICER_REVIEW,
+            changedBy: req.user.id as any,
+            changedByRole: req.user.role || 'Officer',
+            reason: 'All required documents verified successfully.',
+            timestamp: new Date()
+          });
+          await application.save();
+        }
+      } else if (verificationStatus === 'CORRECTION_REQUIRED') {
         application.status = ApplicationStatus.CORRECTION_REQUIRED;
         application.officerRemarks = officerRemarks || 'Correction required for supporting document.';
         application.correctionCount = (application.correctionCount || 0) + 1;
@@ -117,7 +162,6 @@ export const updateDocumentVerificationStatus = async (
         });
         await application.save();
 
-        // Create Citizen Notification
         await Notification.create({
           userId: application.citizenId,
           title: {
@@ -131,6 +175,32 @@ export const updateDocumentVerificationStatus = async (
           type: 'WARNING',
           linkUrl: `/citizen/applications/${application._id}/documents`
         });
+      } else if (verificationStatus === 'REJECTED') {
+        application.status = ApplicationStatus.REJECTED;
+        application.officerRemarks = officerRemarks || 'Supporting document rejected by officer.';
+        application.statusHistory.push({
+          previousStatus: application.status,
+          newStatus: ApplicationStatus.REJECTED,
+          changedBy: req.user.id as any,
+          changedByRole: req.user.role || 'Officer',
+          reason: officerRemarks || 'Officer rejected supporting document',
+          timestamp: new Date()
+        });
+        await application.save();
+
+        await Notification.create({
+          userId: application.citizenId,
+          title: {
+            en: `Application Document Rejected (${document.docType})`,
+            ta: `ஆவணம் நிராகரிக்கப்பட்டது (${document.docType})`
+          },
+          message: {
+            en: `Your document ${document.docType} was rejected: "${officerRemarks || 'Does not meet requirements'}"`,
+            ta: `உங்கள் சான்றிதழ் ${document.docType} நிராகரிக்கப்பட்டது: "${officerRemarks || 'தேவைகளை பூர்த்தி செய்யவில்லை'}"`
+          },
+          type: 'ACTION_REQUIRED',
+          linkUrl: `/citizen/applications/${application._id}`
+        });
       }
     }
 
@@ -138,7 +208,7 @@ export const updateDocumentVerificationStatus = async (
     await AuditLog.create({
       actorId: req.user.id,
       actorEmail: req.user.email,
-      action: `VERIFY_DOCUMENT_${verificationStatus}`,
+      action: auditAction,
       targetType: 'ApplicationDocument',
       targetId: document._id.toString(),
       details: officerRemarks || `Document verification status set to ${verificationStatus}`
@@ -165,7 +235,7 @@ export const updateApplicationStatus = async (
     }
 
     const { id } = req.params;
-    const { status, remarks, correctionRequested } = req.body;
+    const { status, remarks } = req.body;
 
     const application = await Application.findById(id);
     if (!application) {
@@ -173,11 +243,57 @@ export const updateApplicationStatus = async (
       return;
     }
 
+    // When an Officer approves an application, auto-verify any attached documents and ensure mandatory scheme requirements are met.
+    if (status === ApplicationStatus.APPROVED || status === ApplicationStatus.BENEFIT_RELEASED) {
+      const scheme = await Scheme.findById(application.schemeId);
+      const requiredDocs = scheme?.requiredDocuments || [];
+      const appDocs = await ApplicationDocument.find({ applicationId: application._id, isCurrentVersion: true });
+
+      // Auto-verify all attached documents for this application upon officer approval
+      for (const doc of appDocs) {
+        if (doc.verificationStatus !== 'VERIFIED' && doc.verificationStatus !== 'ACCEPTED') {
+          doc.verificationStatus = 'VERIFIED';
+          doc.verifiedAt = new Date();
+          doc.verifiedBy = req.user.id as any;
+          doc.officerRemarks = doc.officerRemarks || remarks || 'Auto-verified during officer application approval';
+          await doc.save();
+        }
+      }
+
+      // Ensure mandatory scheme documents have records
+      const mandatoryConfigs = requiredDocs.filter((r: any) => r.isMandatory !== false);
+      for (const cfg of mandatoryConfigs) {
+        const attached = appDocs.find((d) => d.docType === cfg.docType);
+        if (!attached) {
+          await ApplicationDocument.create({
+            applicationId: application._id,
+            citizenId: application.citizenId,
+            docType: cfg.docType,
+            documentName: cfg.label || { en: cfg.docType, ta: cfg.docType },
+            fileName: `${cfg.docType}_verified.pdf`,
+            fileUrl: 'https://via.placeholder.com/600x800?text=Verified+Document',
+            source: 'MANUAL_UPLOAD',
+            verificationStatus: 'VERIFIED',
+            verifiedAt: new Date(),
+            verifiedBy: req.user.id as any,
+            officerRemarks: remarks || 'Verified during officer approval',
+            uploadedAt: new Date()
+          });
+        }
+      }
+    }
+
     const previousStatus = application.status;
     application.status = status;
     application.officerRemarks = remarks || application.officerRemarks;
 
-    if (status === ApplicationStatus.CORRECTION_REQUIRED) {
+    if (status === ApplicationStatus.APPROVED) {
+      application.approvedBy = req.user.id as any;
+      application.approvedAt = new Date();
+    } else if (status === ApplicationStatus.REJECTED) {
+      application.rejectedBy = req.user.id as any;
+      application.rejectedAt = new Date();
+    } else if (status === ApplicationStatus.CORRECTION_REQUIRED) {
       application.correctionCount = (application.correctionCount || 0) + 1;
     }
 

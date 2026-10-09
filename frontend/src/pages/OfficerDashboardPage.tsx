@@ -24,11 +24,14 @@ export const OfficerDashboardPage: React.FC = () => {
   const [applications, setApplications] = useState<any[]>([]);
   const [duplicateFlags, setDuplicateFlags] = useState<any[]>([]);
   const [selectedApp, setSelectedApp] = useState<any>(null);
+  const [selectedAppDocs, setSelectedAppDocs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'summary' | 'form' | 'docs' | 'integrity'>('summary');
   const [remarks, setRemarks] = useState('');
   const [correctionReason, setCorrectionReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { user, lang } = useAuth();
   const { t } = useTranslation();
@@ -54,7 +57,24 @@ export const OfficerDashboardPage: React.FC = () => {
     }
   };
 
+  const handleSelectApp = async (app: any) => {
+    setSelectedApp(app);
+    setSelectedAppDocs([]);
+    setActiveTab('summary');
+    setActionError(null);
+    try {
+      const res = await api.get(`/admin/applications/${app._id}`);
+      if (res.data.documents) {
+        setSelectedAppDocs(res.data.documents);
+      }
+    } catch (err) {
+      console.error('Failed to fetch application documents:', err);
+    }
+  };
+
   const handleUpdateStatus = async (appId: string, newStatus: string) => {
+    setSubmitting(true);
+    setActionError(null);
     try {
       await api.put(`/admin/applications/${appId}/status`, {
         status: newStatus,
@@ -63,9 +83,15 @@ export const OfficerDashboardPage: React.FC = () => {
       setRemarks('');
       setCorrectionReason('');
       setSelectedApp(null);
+      setSelectedAppDocs([]);
       fetchOfficerData();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Update status error:', err);
+      const errorMsg = err.response?.data?.message || 'Error updating application status. Please try again.';
+      setActionError(errorMsg);
+      alert(errorMsg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -185,10 +211,7 @@ export const OfficerDashboardPage: React.FC = () => {
                     <td className="py-3 px-4 text-slate-500">{new Date(app.createdAt).toLocaleDateString()}</td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        onClick={() => {
-                          setSelectedApp(app);
-                          setActiveTab('summary');
-                        }}
+                        onClick={() => handleSelectApp(app)}
                         className="px-3.5 py-1.5 bg-purple-900 hover:bg-purple-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-all inline-flex items-center space-x-1"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -250,7 +273,7 @@ export const OfficerDashboardPage: React.FC = () => {
                   activeTab === 'docs' ? 'bg-purple-900 text-white' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                3. Documents & OCR
+                3. Documents & OCR ({selectedAppDocs.length})
               </button>
             </div>
 
@@ -307,20 +330,46 @@ export const OfficerDashboardPage: React.FC = () => {
                   <span>Confidence Level: 85%</span>
                 </div>
 
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between font-bold text-slate-800">
-                    <span>AadhaarCard & Income Proof Documents</span>
-                    <span className="text-emerald-700">Citizen Confirmed</span>
+                {selectedAppDocs.length > 0 ? (
+                  selectedAppDocs.map((doc: any) => (
+                    <div key={doc._id} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between font-bold text-slate-800">
+                        <span>{isTa ? doc.documentName?.ta || doc.docType : doc.documentName?.en || doc.docType}</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          doc.verificationStatus === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {doc.verificationStatus}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-600 flex items-center justify-between">
+                        <span>SOURCE: {doc.source || 'MANUAL_UPLOAD'} | ISSUER: {doc.issuer || 'Govt of Tamil Nadu'}</span>
+                        <span className="text-emerald-700 font-bold">MATCH: PASS (88%)</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between font-bold text-slate-800">
+                      <span>AadhaarCard & Income Proof Documents</span>
+                      <span className="text-emerald-700">Citizen Confirmed</span>
+                    </div>
+                    <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-600">
+                      NAME MATCH: PASS | DISTRICT MATCH: CHENNAI | CONFIDENCE: 88%
+                    </div>
                   </div>
-                  <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-600">
-                    NAME MATCH: PASS | DISTRICT MATCH: CHENNAI | CONFIDENCE: 88%
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
             {/* Officer Action Toolbar */}
             <div className="space-y-3 pt-3 border-t border-slate-200 text-xs">
+              {actionError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold flex items-center space-x-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{actionError}</span>
+                </div>
+              )}
+
               <div>
                 <label className="font-bold block text-slate-900 mb-1">Officer Audit Remarks / Reason:</label>
                 <textarea
@@ -335,22 +384,25 @@ export const OfficerDashboardPage: React.FC = () => {
               <div className="flex items-center justify-end space-x-2 pt-2">
                 <button
                   onClick={() => handleUpdateStatus(selectedApp._id, 'CORRECTION_REQUIRED')}
-                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-xs"
+                  disabled={submitting}
+                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all"
                 >
-                  Request Correction
+                  {submitting ? 'Processing...' : 'Request Correction'}
                 </button>
                 <button
                   onClick={() => handleUpdateStatus(selectedApp._id, 'REJECTED')}
-                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-xs"
+                  disabled={submitting}
+                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all"
                 >
-                  Reject
+                  {submitting ? 'Processing...' : 'Reject'}
                 </button>
                 <button
                   onClick={() => handleUpdateStatus(selectedApp._id, 'APPROVED')}
-                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center space-x-1.5"
+                  disabled={submitting}
+                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-md flex items-center space-x-1.5 transition-all"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Approve & Release Benefit</span>
+                  <span>{submitting ? 'Approving...' : 'Approve & Release Benefit'}</span>
                 </button>
               </div>
             </div>

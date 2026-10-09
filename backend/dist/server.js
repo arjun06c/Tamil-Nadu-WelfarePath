@@ -15,6 +15,7 @@ const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const assistantRoutes_1 = __importDefault(require("./routes/assistantRoutes"));
 const miscRoutes_1 = __importDefault(require("./routes/miscRoutes"));
 const digilockerRoutes_1 = __importDefault(require("./routes/digilockerRoutes"));
+const citizenRoutes_1 = __importDefault(require("./routes/citizenRoutes"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const seedData_1 = require("./seed/seedData");
 const WelfareDomain_1 = require("./models/WelfareDomain");
@@ -50,6 +51,7 @@ app.use('/api/admin', adminRoutes_1.default);
 app.use('/api/assistant', assistantRoutes_1.default);
 app.use('/api/misc', miscRoutes_1.default);
 app.use('/api/integrations/digilocker', digilockerRoutes_1.default);
+app.use('/api/citizen', citizenRoutes_1.default);
 // Global Error Handler
 app.use(errorHandler_1.errorHandler);
 // Connect Database & Start Server

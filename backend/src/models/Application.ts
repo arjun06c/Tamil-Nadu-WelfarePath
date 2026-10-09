@@ -36,6 +36,10 @@ export interface IApplication extends Document {
   officerRemarks?: string;
   correctionCount: number;
   assignedOfficerId?: mongoose.Types.ObjectId;
+  approvedBy?: mongoose.Types.ObjectId;
+  approvedAt?: Date;
+  rejectedBy?: mongoose.Types.ObjectId;
+  rejectedAt?: Date;
   declarationAccepted: boolean;
   submittedAt: Date;
   updatedAt: Date;
@@ -70,6 +74,10 @@ const ApplicationSchema: Schema = new Schema(
     officerRemarks: { type: String, default: '' },
     correctionCount: { type: Number, default: 0 },
     assignedOfficerId: { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: { type: Date },
+    rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    rejectedAt: { type: Date },
     declarationAccepted: { type: Boolean, default: true },
     submittedAt: { type: Date, default: Date.now }
   },

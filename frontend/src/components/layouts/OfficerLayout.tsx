@@ -7,7 +7,6 @@ import { OfficerHeader } from '../navigation/OfficerHeader';
 export const OfficerLayout: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <AcademicDisclaimerBanner />
       <div className="flex flex-1">
         <OfficerSidebar />
         <div className="flex-1 flex flex-col min-w-0">

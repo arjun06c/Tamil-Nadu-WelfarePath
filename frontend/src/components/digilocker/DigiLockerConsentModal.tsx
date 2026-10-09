@@ -1,13 +1,12 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, AlertCircle, FileCheck, CheckCircle2, Lock, X } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Lock, X, RefreshCw, ArrowRight, ArrowLeft } from 'lucide-react';
 import { DigiLockerModeBadge } from './DigiLockerModeBadge';
 
 interface DigiLockerConsentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirmConsent: () => void;
+  onConfirmConsent: () => Promise<void> | void;
   mode?: string;
   badgeLabel?: string;
   loading?: boolean;
@@ -21,11 +20,38 @@ export const DigiLockerConsentModal: React.FC<DigiLockerConsentModalProps> = ({
   badgeLabel,
   loading = false
 }) => {
-  const { t } = useTranslation();
   const { lang } = useAuth();
   const isTa = lang === 'ta';
 
+  const [step, setStep] = useState<1 | 2>(1);
+  const [internalLoading, setInternalLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleAllowAccess = async () => {
+    setInternalLoading(true);
+    try {
+      await onConfirmConsent();
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        setInternalLoading(false);
+        setStep(1);
+      }, 1000);
+    } catch (err) {
+      setInternalLoading(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setStep(1);
+    setInternalLoading(false);
+    setIsSuccess(false);
+    onClose();
+  };
+
+  const isLoadingState = loading || internalLoading;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -34,114 +60,154 @@ export const DigiLockerConsentModal: React.FC<DigiLockerConsentModalProps> = ({
         {/* Header */}
         <div className="p-6 bg-gradient-to-r from-blue-900 via-indigo-900 to-teal-900 text-white flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md">
+            <div className="p-2 bg-white/10 rounded-2xl backdrop-blur-md">
               <ShieldCheck className="w-6 h-6 text-teal-300" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold tracking-wide">
-                {isTa ? 'குடிமக்களின் ஆவண அணுகல் சம்மதம்' : 'Citizen Data Access Consent'}
+              <h3 className="text-base font-black tracking-wide">
+                {isTa ? 'டிஜிலாக்கருடன் இணைக்கவும்' : 'Connect to DigiLocker'}
               </h3>
               <p className="text-[11px] text-blue-200">
-                {isTa ? 'பாதுகாப்பான டிஜிலாக்கர் சான்றிதழ் இணைப்பு' : 'Consent-based Official Document Retrieval'}
+                {isTa ? 'பாதுகாப்பான டிஜிட்டல் சான்றிதழ் அணுகல்' : 'Secure Access to Digital Certificates'}
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <DigiLockerModeBadge mode={mode} badgeLabel={badgeLabel} />
+            <button
+              onClick={handleCloseModal}
+              disabled={isLoadingState}
+              className="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Content */}
+        {/* Content Body */}
         <div className="p-6 space-y-5 text-xs">
           
-          <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-            <span className="font-bold text-slate-700">
-              {isTa ? 'இணைப்பு வகை:' : 'Integration Mode:'}
-            </span>
-            <DigiLockerModeBadge mode={mode} badgeLabel={badgeLabel} />
-          </div>
-
-          {/* Scope Explanation */}
-          <div className="space-y-2">
-            <h4 className="font-extrabold text-slate-900 flex items-center space-x-2">
-              <FileCheck className="w-4 h-4 text-blue-900" />
-              <span>{isTa ? 'அணுகக் கோரப்படும் சான்றிதழ்கள்:' : 'Requested Access Scopes:'}</span>
-            </h4>
-            <ul className="grid grid-cols-1 gap-2 bg-blue-50/50 p-3.5 rounded-2xl border border-blue-100 text-slate-700">
-              <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>{isTa ? 'வருமான சான்றிதழ் (Income Certificate)' : 'Income Certificate metadata'}</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>{isTa ? 'சாதி சான்றிதழ் (Community Certificate)' : 'Community Certificate proof'}</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>{isTa ? '12ஆம் வகுப்பு மதிப்பெண் சான்றிதழ் (HSC Marksheet)' : 'Educational HSC Mark Sheet'}</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>{isTa ? 'குடும்ப அட்டை (Smart Ration Card)' : 'PDS Smart Ration Card details'}</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Privacy Protections Notice */}
-          <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-1.5 text-amber-950">
-            <div className="flex items-center space-x-2 font-bold text-amber-900">
-              <Lock className="w-4 h-4 text-amber-700" />
-              <span>{isTa ? 'தனியுரிமை மற்றும் பயன்பாட்டு விதிமுறை:' : 'Privacy & Data Use Notice:'}</span>
+          {/* Loading / Success State */}
+          {isLoadingState ? (
+            <div className="py-8 text-center space-y-3">
+              {isSuccess ? (
+                <div className="space-y-2 animate-in zoom-in-95">
+                  <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-7 h-7" />
+                  </div>
+                  <h4 className="font-extrabold text-emerald-950 text-sm">
+                    {isTa ? 'வெற்றிகரமாக இணைக்கப்பட்டது' : 'Connected Successfully'}
+                  </h4>
+                  <p className="text-slate-500 text-[11px]">
+                    {isTa ? 'உங்கள் சான்றிதழ்கள் தயார் நிலையில் உள்ளன.' : 'Your digital documents are now available for eligible welfare applications.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <RefreshCw className="w-8 h-8 text-blue-900 animate-spin mx-auto" />
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    {isTa ? 'டிஜிலாக்கருடன் இணைக்கிறது...' : 'Connecting to DigiLocker...'}
+                  </h4>
+                  <p className="text-slate-500 text-[11px]">
+                    {isTa ? 'தயவுசெய்து காத்திருக்கவும்...' : 'Verifying consent and initializing secure connection.'}
+                  </p>
+                </div>
+              )}
             </div>
-            <p className="text-[11px] leading-relaxed text-amber-900/90">
-              {isTa
-                ? 'உங்கள் சம்மதத்தின் பேரில் மட்டுமே ஆவணங்கள் பெறப்படும். பெறப்பட்ட ஆவணங்கள் உங்கள் நலத்திட்ட விண்ணப்ப சரிபார்ப்பிற்கு மட்டுமே பயன்படுத்தப்படும்.'
-                : 'Access is consent-driven. WelfarePath only retrieves documents required for your specific welfare application. You may revoke access at any time.'}
-            </p>
-          </div>
+          ) : step === 1 ? (
+            /* STEP 1: Purpose & Access Details */
+            <div className="space-y-4">
+              <p className="text-slate-700 leading-relaxed text-xs">
+                {isTa
+                  ? 'உங்கள் நலத்திட்ட விண்ணப்பத்திற்கு தேவையான சான்றிதழ்களை அணுக தமிழ்நாடு நலன்பாதைக்கு அனுமதியளிக்கவும்.'
+                  : 'Allow TN WelfarePath to access eligible digital documents for your welfare application.'}
+              </p>
 
-          {/* Disclaimer */}
-          <div className="text-[11px] text-slate-500 bg-slate-100 p-3 rounded-xl border border-slate-200 flex items-start space-x-2">
-            <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-            <span>
-              {isTa
-                ? 'டிஜிலாக்கரில் இருந்து ஆவணம் பெறப்படுவது உடனடியாக விண்ணப்ப ஒப்புதலாக கருதப்படாது. அதிகாரி சரிபார்ப்பு தனித்து நடைபெறும்.'
-                : 'Retrieving documents from DigiLocker attaches digital proof to your application, but officer verification remains required.'}
-            </span>
-          </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-semibold">{isTa ? 'விண்ணப்பம்:' : 'Application:'}</span>
+                  <span className="font-extrabold text-slate-900">TN WelfarePath</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-semibold">{isTa ? 'கோரப்படும் அணுகல்:' : 'Access requested:'}</span>
+                  <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-[11px]">
+                    {isTa ? 'தேவையான டிஜிட்டல் சான்றிதழ்கள்' : 'Digital documents required for welfare application'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl flex items-center space-x-2 text-teal-950 text-[11px]">
+                <Lock className="w-4 h-4 text-teal-700 shrink-0" />
+                <span>
+                  {isTa
+                    ? 'உங்கள் சான்றிதழ்கள் பாதுகாப்பாகவும் உங்கள் சம்மதத்துடனும் பெறப்படும்.'
+                    : 'Your documents are accessed strictly with your explicit authorization.'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* STEP 2: Citizen Consent Confirmation */
+            <div className="space-y-4">
+              <h4 className="font-extrabold text-slate-900 text-sm">
+                {isTa ? 'உங்கள் சான்றிதழ்களை பெற அனுமதிக்கிறீர்களா?' : 'Do you allow access to your available documents?'}
+              </h4>
+
+              <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-2xl space-y-2 text-slate-700">
+                <p className="text-xs leading-relaxed">
+                  {isTa
+                    ? 'உங்கள் சம்மதத்தின் பேரில் மட்டுமே வருமான சான்றிதழ், சாதி சான்றிதழ் போன்ற ஆவணங்கள் பெறப்பட்டு விண்ணப்பத்துடன் இணைக்கப்படும்.'
+                    : 'Your documents are retrieved from DigiLocker only upon your consent and attached for welfare scheme verification.'}
+                </p>
+                <div className="text-[11px] font-semibold text-slate-500 pt-1 flex items-center space-x-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                  <span>{isTa ? 'எப்போது வேண்டுமானாலும் இணைப்பைத் துண்டிக்கலாம்.' : 'You can revoke access anytime.'}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-3">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-5 py-2.5 rounded-xl border border-slate-300 font-bold text-xs text-slate-700 hover:bg-slate-100 transition-colors"
-          >
-            {isTa ? 'ரத்து செய்' : 'Cancel'}
-          </button>
-
-          <button
-            onClick={onConfirmConsent}
-            disabled={loading}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-900 to-teal-800 hover:from-blue-800 hover:to-teal-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center space-x-2"
-          >
-            <span>
-              {loading
-                ? isTa
-                  ? 'இணைக்கிறது...'
-                  : 'Connecting...'
-                : isTa
-                ? 'சம்மதித்து தொடர்க'
-                : 'Continue with DigiLocker'}
-            </span>
-          </button>
-        </div>
+        {!isLoadingState && (
+          <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-3">
+            {step === 1 ? (
+              <>
+                <button
+                  onClick={handleCloseModal}
+                  className="px-5 py-2.5 rounded-xl border border-slate-300 font-bold text-xs text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  {isTa ? 'ரத்து செய்' : 'Cancel'}
+                </button>
+                <button
+                  onClick={() => setStep(2)}
+                  className="px-6 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center space-x-1.5"
+                >
+                  <span>{isTa ? 'தொடர்க' : 'Continue'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-xs text-slate-700 hover:bg-slate-100 transition-colors flex items-center space-x-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>{isTa ? 'பின்செல்' : 'Back'}</span>
+                </button>
+                <button
+                  onClick={handleAllowAccess}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-900 to-teal-800 hover:from-blue-800 hover:to-teal-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center space-x-2"
+                >
+                  <ShieldCheck className="w-4 h-4 text-teal-300" />
+                  <span>{isTa ? 'அணுகலை அனுமதி' : 'Allow Access'}</span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

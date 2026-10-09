@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Lock, Mail, ArrowRight, UserCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,121 +22,104 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      const savedUserStr = localStorage.getItem('tn_welfarepath_user');
+      let targetPath = '/citizen/dashboard';
+      if (savedUserStr) {
+        try {
+          const u = JSON.parse(savedUserStr);
+          if (u.role === 'Officer') targetPath = '/officer/dashboard';
+          else if (u.role === 'Admin') targetPath = '/admin/dashboard';
+        } catch (e) {}
+      }
+      navigate(targetPath);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+      setError(err.response?.data?.message || 'Invalid email address or password. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQuickLogin = (roleEmail: string, rolePass: string) => {
-    setEmail(roleEmail);
-    setPassword(rolePass);
-  };
-
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50 hero-gradient">
-      <div className="max-w-md w-full glass-card p-8 rounded-3xl shadow-xl border border-slate-200/80">
+      <div className="max-w-md w-full glass-card p-8 rounded-3xl shadow-xl border border-slate-200/80 space-y-6">
         
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-blue-900 text-white flex items-center justify-center mx-auto mb-3 shadow-md">
-            <Lock className="w-7 h-7" />
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-900 via-indigo-900 to-teal-800 text-white flex items-center justify-center mx-auto shadow-md">
+            <Lock className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
             {isTa ? 'உள்நுழைக' : 'Sign In to WelfarePath'}
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            {isTa ? 'உங்கள் நலத்திட்ட தகுதி மற்றும் விண்ணப்பங்களை பார்வையிட' : 'Access your personalized welfare portfolio & tracking'}
+          <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed font-medium">
+            {isTa
+              ? 'உங்கள் தனிப்பட்ட நலத்திட்டங்கள், விண்ணப்பங்கள், ஆவணங்கள் மற்றும் உதவிகளைப் அணுக உள்நுழைக.'
+              : 'Sign in to access your personalized welfare schemes, applications, documents, and benefits.'}
           </p>
         </div>
 
-        {/* Quick Demo Shortcuts */}
-        <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-3 mb-6">
-          <div className="text-[11px] font-bold text-blue-900 mb-2 flex items-center space-x-1">
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>{isTa ? 'மாதிரி கணக்கில் உடனடி நுழைவு:' : 'Quick Demo One-Click Login:'}</span>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('citizen@gmail.com', 'Citizen@123')}
-              className="py-1.5 bg-white border border-blue-300 rounded-lg text-blue-900 font-semibold hover:bg-blue-100"
-            >
-              Citizen Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('officer@tnwelfare.gov.in', 'Officer@123')}
-              className="py-1.5 bg-white border border-purple-300 rounded-lg text-purple-900 font-semibold hover:bg-purple-100"
-            >
-              Officer Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin@tnwelfare.gov.in', 'Admin@123')}
-              className="py-1.5 bg-white border border-amber-300 rounded-lg text-amber-900 font-semibold hover:bg-amber-100"
-            >
-              Admin Demo
-            </button>
-          </div>
-        </div>
-
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl mb-4">
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3.5 rounded-xl font-bold">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               {isTa ? 'மின்னஞ்சல் முகவரி' : 'Email Address'}
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="citizen@gmail.com"
-                className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-900 focus:outline-none"
+                placeholder="name@example.com"
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-900 focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               {isTa ? 'கடவுச்சொல்' : 'Password'}
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-900 focus:outline-none"
+                className="w-full pl-9 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-900 focus:outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors"
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2"
+            className="w-full py-3.5 bg-gradient-to-r from-blue-900 via-indigo-900 to-teal-800 hover:from-blue-800 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2"
           >
             <span>{loading ? (isTa ? 'சரிபார்க்கிறது...' : 'Signing in...') : (isTa ? 'உள்நுழைக' : 'Sign In')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-slate-500">
+        <div className="pt-2 border-t border-slate-100 text-center text-xs text-slate-500">
           <span>{isTa ? 'கணக்கு இல்லையா?' : "Don't have a citizen account?"} </span>
-          <Link to="/register" className="font-bold text-blue-900 hover:underline">
+          <Link to="/register" className="font-extrabold text-blue-900 hover:underline">
             {isTa ? 'இங்கே பதிவு செய்யவும்' : 'Register now'}
           </Link>
         </div>

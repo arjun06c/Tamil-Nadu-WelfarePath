@@ -9,6 +9,9 @@ const User_1 = require("../models/User");
 const WelfareDomain_1 = require("../models/WelfareDomain");
 const Scheme_1 = require("../models/Scheme");
 const CitizenProfile_1 = require("../models/CitizenProfile");
+const Application_1 = require("../models/Application");
+const ApplicationDocument_1 = require("../models/ApplicationDocument");
+const BenefitRecord_1 = require("../models/BenefitRecord");
 const domainsData = [
     {
         domainKey: 'education',
@@ -460,18 +463,36 @@ const schemesData = [
         ]
     }
 ];
+const expandedSeedData_1 = require("./expandedSeedData");
 const seedDatabase = async () => {
     try {
         console.log('[Seed] Seeding Tamil Nadu WelfarePath Master Data...');
-        // Clear previous domains & schemes
-        await WelfareDomain_1.WelfareDomain.deleteMany({});
-        await Scheme_1.Scheme.deleteMany({});
-        // Seed Domains
-        await WelfareDomain_1.WelfareDomain.insertMany(domainsData);
-        console.log(`✅ Seeded ${domainsData.length} Welfare Domains.`);
-        // Seed Schemes
-        await Scheme_1.Scheme.insertMany(schemesData);
-        console.log(`✅ Seeded ${schemesData.length} Verified Tamil Nadu Welfare Schemes.`);
+        // Merge domains
+        const allDomainsMap = new Map();
+        domainsData.forEach((d) => allDomainsMap.set(d.domainKey, d));
+        expandedSeedData_1.expandedDomainsData.forEach((d) => {
+            if (!allDomainsMap.has(d.domainKey)) {
+                allDomainsMap.set(d.domainKey, d);
+            }
+        });
+        const finalDomains = Array.from(allDomainsMap.values());
+        for (const d of finalDomains) {
+            await WelfareDomain_1.WelfareDomain.findOneAndUpdate({ domainKey: d.domainKey }, d, { upsert: true, new: true });
+        }
+        console.log(`✅ Seeded ${finalDomains.length} Welfare Domains.`);
+        // Merge schemes: preserves original TN-SCH-001 through 006
+        const allSchemesMap = new Map();
+        schemesData.forEach((s) => allSchemesMap.set(s.schemeCode, s));
+        expandedSeedData_1.expandedSchemesData.forEach((s) => {
+            if (!allSchemesMap.has(s.schemeCode)) {
+                allSchemesMap.set(s.schemeCode, s);
+            }
+        });
+        const finalSchemes = Array.from(allSchemesMap.values());
+        for (const s of finalSchemes) {
+            await Scheme_1.Scheme.findOneAndUpdate({ schemeCode: s.schemeCode }, s, { upsert: true, new: true });
+        }
+        console.log(`✅ Seeded ${finalSchemes.length} Verified Tamil Nadu Welfare Schemes.`);
         // Seed Users
         const defaultPasswordHash = await bcryptjs_1.default.hash('Admin@123', 10);
         const officerPasswordHash = await bcryptjs_1.default.hash('Officer@123', 10);
@@ -532,7 +553,151 @@ const seedDatabase = async () => {
                 bankName: 'State Bank of India'
             }
         });
-        console.log(`✅ Seeded Demo System Users:`);
+        // Seed 4 Consistent Demo Scenarios (Scenarios A, B, C, D)
+        const seededSchemes = await Scheme_1.Scheme.find({});
+        const pudhumaiScheme = seededSchemes.find(s => s.schemeCode === 'TN-SCH-001') || seededSchemes[0];
+        const kmutScheme = seededSchemes.find(s => s.schemeCode === 'TN-SCH-002') || seededSchemes[1];
+        const scholarshipScheme = seededSchemes.find(s => s.schemeCode === 'TN-SCH-003') || seededSchemes[2];
+        const oldAgeScheme = seededSchemes.find(s => s.schemeCode === 'TN-SCH-004') || seededSchemes[3];
+        // Clear existing applications, documents, and benefits for seeded citizen
+        await Application_1.Application.deleteMany({ citizenId: citizen._id });
+        await ApplicationDocument_1.ApplicationDocument.deleteMany({ citizenId: citizen._id });
+        await BenefitRecord_1.BenefitRecord.deleteMany({ citizenId: citizen._id });
+        // SCENARIO A — Pending Verification
+        const appA = await Application_1.Application.create({
+            applicationNo: 'TNP-WP-2026-00101',
+            applicationReference: 'TNP-WP-2026-00101',
+            citizenId: citizen._id,
+            schemeId: pudhumaiScheme._id,
+            status: Application_1.ApplicationStatus.DOC_VERIFICATION,
+            currentStep: 2,
+            completionPercentage: 35,
+            submittedAt: new Date(Date.now() - 3 * 86400000)
+        });
+        await ApplicationDocument_1.ApplicationDocument.create({
+            applicationId: appA._id,
+            citizenId: citizen._id,
+            docType: 'GovtSchoolStudyCertificate',
+            documentName: { en: 'Govt School Study Certificate', ta: 'அரசுப் பள்ளி சான்றிதழ்' },
+            fileName: 'Govt_School_Cert.pdf',
+            fileUrl: 'https://via.placeholder.com/600x800?text=Study+Certificate',
+            source: 'DIGILOCKER',
+            sourceReference: 'in.gov.tn.school:2026-881',
+            issuer: 'School Education Department',
+            retrievedAt: new Date(Date.now() - 3 * 86400000),
+            verificationStatus: 'NOT_REVIEWED',
+            uploadedAt: new Date(Date.now() - 3 * 86400000)
+        });
+        // SCENARIO B — Correction Required
+        const appB = await Application_1.Application.create({
+            applicationNo: 'TNP-WP-2026-00102',
+            applicationReference: 'TNP-WP-2026-00102',
+            citizenId: citizen._id,
+            schemeId: kmutScheme._id,
+            status: Application_1.ApplicationStatus.CORRECTION_REQUIRED,
+            currentStep: 2,
+            completionPercentage: 45,
+            officerRemarks: 'Certificate number does not match the submitted information.',
+            correctionCount: 1,
+            submittedAt: new Date(Date.now() - 5 * 86400000)
+        });
+        await ApplicationDocument_1.ApplicationDocument.create({
+            applicationId: appB._id,
+            citizenId: citizen._id,
+            docType: 'SmartRationCard',
+            documentName: { en: 'Family Smart Ration Card', ta: 'குடும்ப ரேஷன் கார்டு' },
+            fileName: 'Ration_Card_Scan.pdf',
+            fileUrl: 'https://via.placeholder.com/600x800?text=Ration+Card',
+            source: 'MANUAL_UPLOAD',
+            verificationStatus: 'CORRECTION_REQUIRED',
+            correctionReason: 'Certificate number mismatch',
+            officerRemarks: 'Certificate number does not match the submitted information.',
+            correctionRequestedAt: new Date(Date.now() - 1 * 86400000),
+            correctionRequestedBy: officer._id,
+            uploadedAt: new Date(Date.now() - 5 * 86400000)
+        });
+        // SCENARIO C — Verified / Officer Review
+        const appC = await Application_1.Application.create({
+            applicationNo: 'TNP-WP-2026-00103',
+            applicationReference: 'TNP-WP-2026-00103',
+            citizenId: citizen._id,
+            schemeId: scholarshipScheme._id,
+            status: Application_1.ApplicationStatus.OFFICER_REVIEW,
+            currentStep: 3,
+            completionPercentage: 75,
+            submittedAt: new Date(Date.now() - 7 * 86400000)
+        });
+        await ApplicationDocument_1.ApplicationDocument.create({
+            applicationId: appC._id,
+            citizenId: citizen._id,
+            docType: 'CommunityCertificate',
+            documentName: { en: 'Community Certificate', ta: 'சாதி சான்றிதழ்' },
+            fileName: 'Community_Cert.pdf',
+            fileUrl: 'https://via.placeholder.com/600x800?text=Community+Cert',
+            source: 'DIGILOCKER',
+            sourceReference: 'in.gov.tn.edistrict.comm:2026-992',
+            issuer: 'Revenue Department',
+            retrievedAt: new Date(Date.now() - 7 * 86400000),
+            verificationStatus: 'VERIFIED',
+            verifiedAt: new Date(Date.now() - 2 * 86400000),
+            verifiedBy: officer._id,
+            officerRemarks: 'Document details match submitted application.',
+            uploadedAt: new Date(Date.now() - 7 * 86400000)
+        });
+        // SCENARIO D — Approved & Benefit Released
+        const appD = await Application_1.Application.create({
+            applicationNo: 'TNP-WP-2026-00104',
+            applicationReference: 'TNP-WP-2026-00104',
+            citizenId: citizen._id,
+            schemeId: oldAgeScheme._id,
+            status: Application_1.ApplicationStatus.APPROVED,
+            currentStep: 5,
+            completionPercentage: 100,
+            approvedBy: officer._id,
+            approvedAt: new Date(Date.now() - 1 * 86400000),
+            submittedAt: new Date(Date.now() - 10 * 86400000)
+        });
+        await ApplicationDocument_1.ApplicationDocument.create({
+            applicationId: appD._id,
+            citizenId: citizen._id,
+            docType: 'AgeProof',
+            documentName: { en: 'Age Proof Document', ta: 'வயதுச் சான்று' },
+            fileName: 'Aadhaar_Age_Proof.pdf',
+            fileUrl: 'https://via.placeholder.com/600x800?text=Aadhaar+Proof',
+            source: 'DIGILOCKER',
+            issuer: 'UIDAI / Revenue Dept',
+            verificationStatus: 'VERIFIED',
+            verifiedAt: new Date(Date.now() - 2 * 86400000),
+            verifiedBy: officer._id,
+            uploadedAt: new Date(Date.now() - 10 * 86400000)
+        });
+        await ApplicationDocument_1.ApplicationDocument.create({
+            applicationId: appD._id,
+            citizenId: citizen._id,
+            docType: 'IncomeCertificate',
+            documentName: { en: 'Income Certificate', ta: 'வருமான சான்றிதழ்' },
+            fileName: 'Income_Cert_Verified.pdf',
+            fileUrl: 'https://via.placeholder.com/600x800?text=Income+Cert',
+            source: 'DIGILOCKER',
+            issuer: 'Revenue Department',
+            verificationStatus: 'VERIFIED',
+            verifiedAt: new Date(Date.now() - 2 * 86400000),
+            verifiedBy: officer._id,
+            uploadedAt: new Date(Date.now() - 10 * 86400000)
+        });
+        await BenefitRecord_1.BenefitRecord.create({
+            applicationId: appD._id,
+            citizenId: citizen._id,
+            schemeId: oldAgeScheme._id,
+            disbursementAmount: 1200,
+            disbursementFrequency: 'Monthly',
+            releaseDate: new Date(Date.now() - 1 * 86400000),
+            status: 'ACTIVE',
+            nextRenewalDate: new Date(Date.now() + 365 * 86400000),
+            benefitReferenceNo: 'TN-BEN-981245',
+            notes: 'Benefit approved and released under Indira Gandhi Old Age Pension Scheme.'
+        });
+        console.log(`✅ Seeded Demo System Users & 4 Consistent Demo Scenarios (Pending, Correction Required, Officer Review, Approved).`);
         console.log(`   - Admin: admin@tnwelfare.gov.in / Admin@123`);
         console.log(`   - Officer: officer@tnwelfare.gov.in / Officer@123`);
         console.log(`   - Citizen: citizen@gmail.com / Citizen@123`);

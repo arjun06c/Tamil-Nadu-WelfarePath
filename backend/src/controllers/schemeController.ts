@@ -11,21 +11,86 @@ import { evaluateSchemeEligibility, IDocumentFactContext } from '../services/eli
 export const getAllDomains = async (req: Request, res: Response): Promise<void> => {
   try {
     const domains = await WelfareDomain.find().sort({ displayOrder: 1 });
-    res.status(200).json({ domains });
+
+    const counts = await Scheme.aggregate([
+      { $match: { isActive: true, status: { $ne: 'ARCHIVED' } } },
+      { $group: { _id: '$domainKey', count: { $sum: 1 } } }
+    ]);
+
+    const countMap: Record<string, number> = {};
+    counts.forEach((c) => {
+      countMap[c._id] = c.count;
+    });
+
+    const domainsWithCounts = domains.map((d) => ({
+      ...d.toObject(),
+      schemeCount: countMap[d.domainKey] || 0
+    }));
+
+    const totalDomains = domains.length;
+    const totalSchemes = await Scheme.countDocuments({ status: { $ne: 'ARCHIVED' } });
+    const publishedSchemes = await Scheme.countDocuments({ status: 'PUBLISHED', isActive: true });
+    const draftSchemes = await Scheme.countDocuments({ status: 'DRAFT' });
+
+    res.status(200).json({
+      domains: domainsWithCounts,
+      stats: {
+        totalDomains,
+        totalSchemes,
+        publishedSchemes,
+        draftSchemes
+      }
+    });
   } catch (error) {
     console.error('getAllDomains error:', error);
     res.status(500).json({ message: 'Error fetching welfare domains' });
   }
 };
 
+export const getDomainByKey = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { domainKey } = req.params;
+    const domain = await WelfareDomain.findOne({ domainKey });
+    if (!domain) {
+      res.status(404).json({ message: 'Domain not found' });
+      return;
+    }
+
+    const schemes = await Scheme.find({ domainKey, isActive: true, status: 'PUBLISHED' }).sort({ createdAt: -1 });
+
+    res.status(200).json({ domain, schemes, count: schemes.length });
+  } catch (error) {
+    console.error('getDomainByKey error:', error);
+    res.status(500).json({ message: 'Error fetching domain details' });
+  }
+};
+
 export const getAllSchemes = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { search, domainKey, category } = req.query;
+    const { search, domainKey, status, department, includeDrafts } = req.query;
 
-    const query: any = { isActive: true };
+    const query: any = {};
+
+    if (includeDrafts === 'true' || status) {
+      if (status) {
+        query.status = status;
+      } else {
+        query.status = { $ne: 'ARCHIVED' };
+      }
+    } else {
+      query.isActive = true;
+      query.status = 'PUBLISHED';
+    }
 
     if (domainKey) {
       query.domainKey = domainKey;
+    }
+
+    if (department) {
+      query.$or = [
+        { 'department.en': new RegExp(String(department), 'i') },
+        { 'department.ta': new RegExp(String(department), 'i') }
+      ];
     }
 
     if (search) {
@@ -35,12 +100,14 @@ export const getAllSchemes = async (req: Request, res: Response): Promise<void> 
         { 'name.ta': searchRegex },
         { 'department.en': searchRegex },
         { 'department.ta': searchRegex },
+        { 'description.en': searchRegex },
+        { 'description.ta': searchRegex },
         { schemeCode: searchRegex }
       ];
     }
 
     const schemes = await Scheme.find(query).sort({ createdAt: -1 });
-    res.status(200).json({ schemes });
+    res.status(200).json({ schemes, count: schemes.length });
   } catch (error) {
     console.error('getAllSchemes error:', error);
     res.status(500).json({ message: 'Error fetching schemes' });
@@ -50,7 +117,10 @@ export const getAllSchemes = async (req: Request, res: Response): Promise<void> 
 export const getSchemeById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const scheme = await Scheme.findById(id);
+    let scheme = await Scheme.findById(id);
+    if (!scheme) {
+      scheme = await Scheme.findOne({ schemeCode: id });
+    }
     if (!scheme) {
       res.status(404).json({ message: 'Scheme not found' });
       return;
@@ -59,6 +129,147 @@ export const getSchemeById = async (req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('getSchemeById error:', error);
     res.status(500).json({ message: 'Error fetching scheme detail' });
+  }
+};
+
+export const getRecommendedSchemes = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthenticated' });
+      return;
+    }
+
+    const { getEvaluatedRecommendationsForCitizen } = await import('./citizenDashboardController');
+    const { summary, recommendations } = await getEvaluatedRecommendationsForCitizen(req.user.id);
+
+    res.status(200).json({
+      summary,
+      recommendations
+    });
+  } catch (error) {
+    console.error('getRecommendedSchemes error:', error);
+    res.status(500).json({ message: 'Error fetching recommended schemes' });
+  }
+};
+
+export const createDomainAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { domainKey, name, description, iconName, displayOrder, status } = req.body;
+    if (!domainKey || !name?.en || !name?.ta) {
+      res.status(400).json({ message: 'Domain key and bilingual names are required' });
+      return;
+    }
+
+    const domain = await WelfareDomain.create({
+      domainKey,
+      name,
+      description: description || { en: '', ta: '' },
+      iconName: iconName || 'Award',
+      displayOrder: displayOrder || 0,
+      status: status || 'ACTIVE'
+    });
+
+    res.status(201).json({ domain });
+  } catch (error: any) {
+    console.error('createDomainAdmin error:', error);
+    res.status(500).json({ message: error.message || 'Error creating domain' });
+  }
+};
+
+export const updateDomainAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const domain = await WelfareDomain.findByIdAndUpdate(id, req.body, { new: true });
+    if (!domain) {
+      res.status(404).json({ message: 'Domain not found' });
+      return;
+    }
+    res.status(200).json({ domain });
+  } catch (error: any) {
+    console.error('updateDomainAdmin error:', error);
+    res.status(500).json({ message: error.message || 'Error updating domain' });
+  }
+};
+
+export const createSchemeAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { schemeCode, name, department, domainKey, description, benefitSummary, rules, requiredDocuments, status, isDemoData } = req.body;
+    if (!schemeCode || !name?.en || !domainKey || !department?.en) {
+      res.status(400).json({ message: 'Scheme code, name, department, and domain key are required' });
+      return;
+    }
+
+    const scheme = await Scheme.create({
+      schemeCode,
+      name,
+      department,
+      domainKey,
+      description: description || { en: '', ta: '' },
+      benefitSummary: benefitSummary || { en: '', ta: '' },
+      rules: rules || { all: [] },
+      requiredDocuments: requiredDocuments || [],
+      status: status || 'DRAFT',
+      isActive: status === 'PUBLISHED',
+      isDemoData: !!isDemoData
+    });
+
+    res.status(201).json({ scheme });
+  } catch (error: any) {
+    console.error('createSchemeAdmin error:', error);
+    res.status(500).json({ message: error.message || 'Error creating scheme' });
+  }
+};
+
+export const updateSchemeAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const updates = { ...req.body };
+    if (updates.status) {
+      updates.isActive = updates.status === 'PUBLISHED';
+    }
+
+    // Increment ruleVersion if rules are updated
+    if (updates.rules) {
+      const existing = await Scheme.findById(id);
+      if (existing) {
+        const vNum = parseFloat(existing.ruleVersion || '1.0');
+        updates.ruleVersion = (vNum + 0.1).toFixed(1);
+      }
+    }
+
+    const scheme = await Scheme.findByIdAndUpdate(id, updates, { new: true });
+    if (!scheme) {
+      res.status(404).json({ message: 'Scheme not found' });
+      return;
+    }
+    res.status(200).json({ scheme });
+  } catch (error: any) {
+    console.error('updateSchemeAdmin error:', error);
+    res.status(500).json({ message: error.message || 'Error updating scheme' });
+  }
+};
+
+export const testRulesHandler = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { rules, requiredDocuments, sampleProfile } = req.body;
+    if (!rules || !sampleProfile) {
+      res.status(400).json({ message: 'Rules and sample profile are required for testing' });
+      return;
+    }
+
+    const mockScheme = {
+      rules: rules || { all: [] },
+      requiredDocuments: requiredDocuments || []
+    } as any;
+
+    const outcome = evaluateSchemeEligibility(mockScheme, sampleProfile, sampleProfile.attachedDocTypes || []);
+
+    res.status(200).json({
+      outcome
+    });
+  } catch (error: any) {
+    console.error('testRulesHandler error:', error);
+    res.status(500).json({ message: error.message || 'Error testing rules' });
   }
 };
 

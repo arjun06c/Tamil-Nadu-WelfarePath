@@ -27,10 +27,10 @@ export const FaqPage: React.FC = () => {
 
   const defaultFaqs = [
     {
-      qEn: 'Is Tamil Nadu WelfarePath an official government website?',
-      qTa: 'தமிழ்நாடு நலன்பாதை அதிகாரப்பூர்வ அரசு இணையதளமா?',
-      aEn: 'No, WelfarePath is an independent academic prototype developed to demonstrate explainable eligibility assessment and document readiness assistance. For official submissions, citizens must visit official state portals.',
-      aTa: 'இல்லை, இது ஒரு கல்வி முன்மாதிரி தளம். இறுதி விவரங்களுக்கு அதிகாரப்பூர்வ அரசு இணையதளங்களை பார்க்கவும்.'
+      qEn: 'What is Tamil Nadu WelfarePath?',
+      qTa: 'தமிழ்நாடு நலன்பாதை என்றால் என்ன?',
+      aEn: 'Tamil Nadu WelfarePath is a personalized citizen welfare guidance platform that helps citizens discover eligible state benefits, understand rule requirements, and track application readiness.',
+      aTa: 'தமிழ்நாடு நலன்பாதை என்பது குடிமக்கள் தகுதியான நலத்திட்டங்களைக் கண்டறியவும், தகுதி விதிகளையும் ஆவணத் தேவைகளையும் புரிந்துகொள்ளவும் உதவும் வழிகாட்டி தளமாகும்.'
     },
     {
       qEn: 'What does "Near Eligible" mean?',

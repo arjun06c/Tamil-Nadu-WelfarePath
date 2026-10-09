@@ -40,7 +40,7 @@ export const AdminIntegrationHealthPage: React.FC = () => {
 
   const status = healthData?.status || 'OPERATIONAL';
   const mode = healthData?.mode || 'mock';
-  const envBadgeLabel = healthData?.envBadgeLabel || 'Demo / Mock Environment';
+  const envBadgeLabel = healthData?.envBadgeLabel || 'Simulation / Sandbox Environment';
   const config = healthData?.configuration || {};
   const activeServices = healthData?.activeServices || [];
 

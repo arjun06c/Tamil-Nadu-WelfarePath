@@ -50,6 +50,10 @@ const SchemeSchema = new mongoose_1.Schema({
         en: { type: String, required: true },
         ta: { type: String, required: true }
     },
+    shortDescription: {
+        en: { type: String, default: '' },
+        ta: { type: String, default: '' }
+    },
     benefitSummary: {
         en: { type: String, required: true },
         ta: { type: String, required: true }
@@ -99,6 +103,8 @@ const SchemeSchema = new mongoose_1.Schema({
     officialUrl: { type: String, default: 'https://tn.gov.in' },
     lastVerifiedDate: { type: String, default: '2026-01-01' },
     ruleVersion: { type: String, default: '1.0' },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'], default: 'PUBLISHED' },
+    isDemoData: { type: Boolean, default: false }
 }, { timestamps: true });
 exports.Scheme = mongoose_1.default.model('Scheme', SchemeSchema);

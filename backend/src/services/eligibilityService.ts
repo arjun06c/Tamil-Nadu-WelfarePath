@@ -19,31 +19,60 @@ export interface IConflictDetail {
 }
 
 export interface IEvaluationOutcome {
-  status: 'ELIGIBLE' | 'NEAR_ELIGIBLE' | 'NOT_ELIGIBLE';
+  status: 'STRONG_MATCH' | 'POTENTIAL_MATCH' | 'NEEDS_INFORMATION' | 'DOCUMENTS_REQUIRED' | 'NOT_ELIGIBLE' | 'ELIGIBLE' | 'NEAR_ELIGIBLE';
+  statusBadge: {
+    en: string;
+    ta: string;
+  };
   isPreliminaryMatch?: boolean;
   isVerifiedMatch?: boolean;
   hasDataConflict?: boolean;
   conflictDetails?: IConflictDetail[];
   criteriaBreakdown: ICriteriaResult[];
+  exclusionBreakdown: ICriteriaResult[];
+  missingInformation: Array<{
+    field: string;
+    label: { en: string; ta: string };
+  }>;
   missingDocuments: Array<{
     docType: string;
     label: { en: string; ta: string };
     isMandatory: boolean;
   }>;
   failedMandatoryCount: number;
+  triggeredExclusionCount: number;
   gapAnalysisRemarks: {
     en: string;
     ta: string;
   };
 }
 
+// Field Label Dictionary for Explainability
+const FIELD_LABELS: Record<string, { en: string; ta: string }> = {
+  annualFamilyIncome: { en: 'Annual Family Income', ta: 'குடும்பத்தின் ஆண்டு வருமானம்' },
+  annualIncome: { en: 'Annual Income', ta: 'ஆண்டு வருமானம்' },
+  monthlySalary: { en: 'Monthly Salary', ta: 'மாத வருமானம்' },
+  age: { en: 'Age', ta: 'வயது' },
+  gender: { en: 'Gender', ta: 'பாலினம்' },
+  residence: { en: 'Tamil Nadu Residence', ta: 'தமிழ்நாடு இருப்பிடம்' },
+  governmentEmployee: { en: 'Government Employee Status', ta: 'அரசு ஊழியர் தகுதி' },
+  employmentStatus: { en: 'Employment Status', ta: 'வேலைவாய்ப்பு நிலை' },
+  isFarmer: { en: 'Farmer Status', ta: 'விவசாயி தகுதி' },
+  hasDisability: { en: 'Differently Abled Status', ta: 'மாற்றுத்திறனாளி தகுதி' },
+  disabilityPercentage: { en: 'Disability Percentage', ta: 'மாற்றுத்திறன் சதவீதம்' },
+  alreadyReceivingBenefit: { en: 'Existing Scheme Benefit', ta: 'தற்போது பெறும் அரசு உதவி' },
+  communityCategory: { en: 'Social Category / Community', ta: 'சமூகப் பிரிவு / சாதி' },
+  isWidow: { en: 'Destitute Widow Status', ta: 'ஆதரவற்ற விதவை தகுதி' }
+};
+
 export const evaluateCriterion = (
   condition: IRuleCondition,
   profile: ICitizenProfile,
   docContext?: IDocumentFactContext,
-  conflictAccumulator?: IConflictDetail[]
-): ICriteriaResult => {
-  const { field, operator, value: requiredValue, label, isMandatory = true } = condition;
+  conflictAccumulator?: IConflictDetail[],
+  isExclusionRule: boolean = false
+): ICriteriaResult & { isMissingInfo?: boolean } => {
+  const { field, operator, value: requiredValue, valueSecondary, frequency, label, isMandatory = true } = condition;
 
   // Extract base profile value
   let citizenValue: any = (profile as any)[field];
@@ -51,7 +80,15 @@ export const evaluateCriterion = (
   let isVerifiedDocumentFact = false;
   let isPreliminaryDocumentFact = false;
 
-  // Helper map for field aliases (e.g. annualIncome <-> annualFamilyIncome)
+  // Aliases and defaults
+  if (citizenValue === undefined || citizenValue === null || citizenValue === '') {
+    if (field === 'annualFamilyIncome') citizenValue = (profile as any).annualIncome;
+    if (field === 'annualIncome') citizenValue = (profile as any).annualFamilyIncome;
+    if (field === 'residence') citizenValue = (profile as any).state === 'Tamil Nadu' ? 'Tamil Nadu' : (profile as any).residence;
+    if (field === 'governmentEmployee') citizenValue = (profile as any).isGovtEmployee ?? (profile as any).isGovernmentEmployee;
+  }
+
+  // Helper map for document facts
   const getDocValue = (factsObj?: Record<string, any>) => {
     if (!factsObj) return undefined;
     if (factsObj[field] !== undefined) return factsObj[field];
@@ -66,37 +103,13 @@ export const evaluateCriterion = (
   if (verifiedDocValue !== undefined) {
     citizenValue = verifiedDocValue;
     isVerifiedDocumentFact = true;
-    if (profileRawValue !== undefined && String(profileRawValue) !== String(verifiedDocValue) && conflictAccumulator) {
-      conflictAccumulator.push({
-        field,
-        profileValue: profileRawValue,
-        documentValue: verifiedDocValue,
-        isVerified: true,
-        message: {
-          en: `Notice: Information differs from your profile (${field}: Profile states ${profileRawValue}, Verified Certificate states ${verifiedDocValue}). Verified document fact used.`,
-          ta: `அறிவிப்பு: உங்கள் சுயவிவரத்திலிருந்து தகவல் மாறுகிறது (${field}: சுயவிவரம் ${profileRawValue}, சரிபார்க்கப்பட்ட சான்றிதழ் ${verifiedDocValue}). சரிபார்க்கப்பட்ட ஆவணத் தகவல் பயன்படுத்தப்பட்டது.`
-        }
-      });
-    }
   } else if (confirmedDocValue !== undefined) {
     citizenValue = confirmedDocValue;
     isPreliminaryDocumentFact = true;
-    if (profileRawValue !== undefined && String(profileRawValue) !== String(confirmedDocValue) && conflictAccumulator) {
-      conflictAccumulator.push({
-        field,
-        profileValue: profileRawValue,
-        documentValue: confirmedDocValue,
-        isVerified: false,
-        message: {
-          en: `Notice: Information differs from your profile (${field}: Profile states ${profileRawValue}, Certificate states ${confirmedDocValue}). Certificate value used for preliminary evaluation (Pending Officer Review).`,
-          ta: `அறிவிப்பு: உங்கள் சுயவிவரத்திலிருந்து தகவல் மாறுகிறது (${field}: சுயவிவரம் ${profileRawValue}, சான்றிதழ் ${confirmedDocValue}). சான்றிதழ் தகவல் முதற்கட்ட மதிப்பீட்டிற்கு பயன்படுத்தப்பட்டது.`
-        }
-      });
-    }
   }
 
-  // Special calculated fields (age)
-  if (field === 'age') {
+  // Calculate age from DOB if age field
+  if (field === 'age' && (citizenValue === undefined || citizenValue === null)) {
     const dob = verifiedDocValue?.dob || confirmedDocValue?.dob || profile.dob;
     if (dob) {
       const today = new Date();
@@ -110,69 +123,127 @@ export const evaluateCriterion = (
     }
   }
 
-  let passed = false;
-
-  switch (operator) {
-    case 'equals':
-      passed = citizenValue === requiredValue;
-      break;
-    case 'not_equals':
-      passed = citizenValue !== requiredValue;
-      break;
-    case 'greater_than_or_equal':
-      passed = Number(citizenValue) >= Number(requiredValue);
-      break;
-    case 'less_than_or_equal':
-      passed = Number(citizenValue) <= Number(requiredValue);
-      break;
-    case 'in':
-      if (Array.isArray(requiredValue)) {
-        passed = requiredValue.includes(citizenValue);
-      }
-      break;
-    case 'not_in':
-      if (Array.isArray(requiredValue)) {
-        passed = !requiredValue.includes(citizenValue);
-      }
-      break;
-    case 'contains':
-      if (typeof citizenValue === 'string') {
-        passed = citizenValue.toLowerCase().includes(String(requiredValue).toLowerCase());
-      }
-      break;
-    default:
-      passed = false;
+  // Income Normalization Check
+  if ((field === 'annualFamilyIncome' || field === 'annualIncome') && citizenValue !== undefined && citizenValue !== null) {
+    if (frequency === 'Monthly') {
+      // Required value is monthly, convert citizen annual income to monthly or vice-versa
+      citizenValue = Math.round(Number(citizenValue) / 12);
+    }
+  } else if (field === 'monthlySalary' && citizenValue !== undefined && citizenValue !== null) {
+    if (frequency === 'Annual' || !frequency) {
+      citizenValue = Number(citizenValue) * 12;
+    }
   }
 
-  const factTagEn = isVerifiedDocumentFact
-    ? ' [Verified Document Information]'
-    : isPreliminaryDocumentFact
-    ? ' [Preliminary Match - Pending Officer Review]'
-    : '';
+  // Check if info is missing
+  const isMissingInfo = citizenValue === undefined || citizenValue === null || citizenValue === '';
 
-  const factTagTa = isVerifiedDocumentFact
-    ? ' [சரிபார்க்கப்பட்ட ஆவணத் தகவல்]'
-    : isPreliminaryDocumentFact
-    ? ' [முதற்கட்ட பொருத்தம் - அதிகாரி சரிபார்ப்பு நிலுவையில்]'
-    : '';
+  let passed = false;
 
-  const explanationEn = passed
-    ? `Satisfied: Your ${field} (${citizenValue ?? 'Not provided'}) meets requirement (${requiredValue}).${factTagEn}`
-    : `Failed: Your ${field} (${citizenValue ?? 'Not provided'}) does not meet requirement (${requiredValue}).${factTagEn}`;
+  if (isMissingInfo) {
+    passed = false;
+  } else {
+    switch (operator) {
+      case 'equals':
+      case '=':
+        if (typeof requiredValue === 'boolean') {
+          passed = Boolean(citizenValue) === Boolean(requiredValue);
+        } else {
+          passed = String(citizenValue).toLowerCase() === String(requiredValue).toLowerCase();
+        }
+        break;
+      case 'not_equals':
+      case '!=':
+        passed = String(citizenValue).toLowerCase() !== String(requiredValue).toLowerCase();
+        break;
+      case 'greater_than':
+      case '>':
+        passed = Number(citizenValue) > Number(requiredValue);
+        break;
+      case 'greater_than_or_equal':
+      case '>=':
+        passed = Number(citizenValue) >= Number(requiredValue);
+        break;
+      case 'less_than':
+      case '<':
+        passed = Number(citizenValue) < Number(requiredValue);
+        break;
+      case 'less_than_or_equal':
+      case '<=':
+        passed = Number(citizenValue) <= Number(requiredValue);
+        break;
+      case 'between':
+        if (valueSecondary !== undefined) {
+          passed = Number(citizenValue) >= Number(requiredValue) && Number(citizenValue) <= Number(valueSecondary);
+        }
+        break;
+      case 'in':
+        if (Array.isArray(requiredValue)) {
+          passed = requiredValue.map(v => String(v).toLowerCase()).includes(String(citizenValue).toLowerCase());
+        }
+        break;
+      case 'not_in':
+        if (Array.isArray(requiredValue)) {
+          passed = !requiredValue.map(v => String(v).toLowerCase()).includes(String(citizenValue).toLowerCase());
+        }
+        break;
+      case 'contains':
+        passed = String(citizenValue).toLowerCase().includes(String(requiredValue).toLowerCase());
+        break;
+      case 'is_true':
+        passed = Boolean(citizenValue) === true;
+        break;
+      case 'is_false':
+        passed = Boolean(citizenValue) === false;
+        break;
+      case 'exists':
+        passed = !isMissingInfo;
+        break;
+      case 'does_not_exist':
+        passed = isMissingInfo;
+        break;
+      default:
+        passed = false;
+    }
+  }
 
-  const explanationTa = passed
-    ? `நிறைவேறியது: உங்கள் ${field} (${citizenValue ?? 'வழங்கப்படவில்லை'}) நிபந்தனையை (${requiredValue}) பூர்த்தி செய்கிறது.${factTagTa}`
-    : `பூர்த்தியாகவில்லை: உங்கள் ${field} (${citizenValue ?? 'வழங்கப்படவில்லை'}) நிபந்தனையை (${requiredValue}) பூர்த்தி செய்யவில்லை.${factTagTa}`;
+  // Label fallback
+  const displayLabel = label || FIELD_LABELS[field] || { en: field, ta: field };
+
+  let explanationEn = '';
+  let explanationTa = '';
+
+  if (isMissingInfo) {
+    explanationEn = `Missing Info: ${displayLabel.en} is required to evaluate this rule.`;
+    explanationTa = `தகவல் விடுபட்டுள்ளது: இந்த விதியை மதிப்பிட ${displayLabel.ta} தேவைப்படுகிறது.`;
+  } else if (isExclusionRule) {
+    if (passed) {
+      explanationEn = `Exclusion Triggered: ${displayLabel.en} is "${citizenValue}" which disqualifies from this scheme.`;
+      explanationTa = `விலக்கு நிபந்தனை பொருந்தியது: ${displayLabel.ta} "${citizenValue}" என்பதால் இந்த திட்டத்திற்கு தகுதியற்றது.`;
+    } else {
+      explanationEn = `Exclusion Not Triggered: ${displayLabel.en} condition satisfied (${citizenValue}).`;
+      explanationTa = `விலக்கு நிபந்தனை பொருந்தவில்லை: ${displayLabel.ta} சரி (${citizenValue}).`;
+    }
+  } else {
+    if (passed) {
+      explanationEn = `Satisfied: ${displayLabel.en} (${citizenValue}) meets requirement (${operator} ${requiredValue}).`;
+      explanationTa = `நிறைவேறியது: ${displayLabel.ta} (${citizenValue}) நிபந்தனையை பூர்த்தி செய்கிறது (${requiredValue}).`;
+    } else {
+      explanationEn = `Not Satisfied: ${displayLabel.en} (${citizenValue}) does not meet requirement (${operator} ${requiredValue}).`;
+      explanationTa = `பூர்த்தியாகவில்லை: ${displayLabel.ta} (${citizenValue}) நிபந்தனையை பூர்த்தி செய்யவில்லை (${requiredValue}).`;
+    }
+  }
 
   return {
     field,
     operator,
     requiredValue,
-    citizenValue,
+    citizenValue: citizenValue ?? 'Not Provided',
     passed,
-    label,
+    label: displayLabel,
     explanation: { en: explanationEn, ta: explanationTa },
-    isMandatory
+    isMandatory,
+    isMissingInfo
   };
 };
 
@@ -183,26 +254,64 @@ export const evaluateSchemeEligibility = (
   docContext?: IDocumentFactContext
 ): IEvaluationOutcome => {
   const criteriaBreakdown: ICriteriaResult[] = [];
+  const exclusionBreakdown: ICriteriaResult[] = [];
   const conflictDetails: IConflictDetail[] = [];
-  let failedMandatoryCount = 0;
+  const missingInformation: Array<{ field: string; label: { en: string; ta: string } }> = [];
 
-  // Merge uploadedDocTypes with attachedDocTypes in docContext if present
+  let failedMandatoryCount = 0;
+  let triggeredExclusionCount = 0;
+
   const combinedDocTypes = Array.from(
     new Set([...uploadedDocTypes, ...(docContext?.attachedDocTypes || [])])
   );
 
-  // Evaluate 'all' conditions (AND logic)
+  // 1. Evaluate Required Positive Conditions ('all' array)
   if (scheme.rules.all && Array.isArray(scheme.rules.all)) {
     for (const condition of scheme.rules.all) {
-      const result = evaluateCriterion(condition, profile, docContext, conflictDetails);
+      const result = evaluateCriterion(condition, profile, docContext, conflictDetails, false);
       criteriaBreakdown.push(result);
-      if (!result.passed && result.isMandatory) {
+
+      if (result.isMissingInfo) {
+        missingInformation.push({
+          field: result.field,
+          label: result.label
+        });
+      } else if (!result.passed && result.isMandatory) {
         failedMandatoryCount++;
       }
     }
   }
 
-  // Check missing mandatory documents
+  // Evaluate Alternative Conditions ('any' array if present)
+  if (scheme.rules.any && Array.isArray(scheme.rules.any) && scheme.rules.any.length > 0) {
+    let anyPassed = false;
+    for (const condition of scheme.rules.any) {
+      const result = evaluateCriterion(condition, profile, docContext, conflictDetails, false);
+      criteriaBreakdown.push(result);
+      if (result.passed) {
+        anyPassed = true;
+      }
+    }
+    if (!anyPassed) {
+      failedMandatoryCount++;
+    }
+  }
+
+  // 2. Evaluate Exclusion Conditions ('exclusions' or 'none' array)
+  const exclusionsList = scheme.rules.exclusions || scheme.rules.none || [];
+  if (Array.isArray(exclusionsList)) {
+    for (const condition of exclusionsList) {
+      const result = evaluateCriterion(condition, profile, docContext, conflictDetails, true);
+      exclusionBreakdown.push(result);
+
+      // In exclusion rules: if result.passed === true, the exclusion is TRIGGERED (disqualified)!
+      if (result.passed) {
+        triggeredExclusionCount++;
+      }
+    }
+  }
+
+  // 3. Check missing mandatory proof documents
   const missingDocuments: Array<{
     docType: string;
     label: { en: string; ta: string };
@@ -215,7 +324,7 @@ export const evaluateSchemeEligibility = (
         missingDocuments.push({
           docType: doc.docType,
           label: doc.label,
-          isMandatory: doc.isMandatory
+          isMandatory: doc.isMandatory !== false
         });
       }
     }
@@ -223,66 +332,77 @@ export const evaluateSchemeEligibility = (
 
   const missingMandatoryDocsCount = missingDocuments.filter((d) => d.isMandatory).length;
 
-  // Determine 3-Level Classification
-  let status: 'ELIGIBLE' | 'NEAR_ELIGIBLE' | 'NOT_ELIGIBLE' = 'NOT_ELIGIBLE';
+  // 4. Determine Outcome Status
+  let status: 'STRONG_MATCH' | 'POTENTIAL_MATCH' | 'NEEDS_INFORMATION' | 'DOCUMENTS_REQUIRED' | 'NOT_ELIGIBLE' = 'NOT_ELIGIBLE';
 
-  if (failedMandatoryCount === 0 && missingMandatoryDocsCount === 0) {
-    status = 'ELIGIBLE';
-  } else if (failedMandatoryCount === 0 && missingMandatoryDocsCount > 0) {
-    status = 'NEAR_ELIGIBLE';
-  } else if (failedMandatoryCount === 1 && missingMandatoryDocsCount <= 2) {
-    status = 'NEAR_ELIGIBLE';
-  } else {
+  if (triggeredExclusionCount > 0) {
     status = 'NOT_ELIGIBLE';
+  } else if (failedMandatoryCount > 0) {
+    status = 'NOT_ELIGIBLE';
+  } else if (missingInformation.length > 0) {
+    status = 'NEEDS_INFORMATION';
+  } else if (missingMandatoryDocsCount > 0) {
+    status = 'POTENTIAL_MATCH';
+  } else {
+    status = 'STRONG_MATCH';
+  }
+
+  // Status Badges
+  const badgeMap: Record<string, { en: string; ta: string }> = {
+    STRONG_MATCH: { en: 'Strong Match', ta: 'முழு தகுதி பொருத்தம்' },
+    POTENTIAL_MATCH: { en: 'Potential Match', ta: 'சாத்தியமான தகுதி' },
+    NEEDS_INFORMATION: { en: 'More Information Needed', ta: 'கூடுதல் தகவல் தேவை' },
+    DOCUMENTS_REQUIRED: { en: 'Proof Documents Needed', ta: 'ஆவணங்கள் தேவைப்படுகின்றன' },
+    NOT_ELIGIBLE: { en: 'Not Eligible Based on Current Info', ta: 'தற்போது தகுதியற்றது' }
+  };
+
+  const statusBadge = badgeMap[status] || badgeMap.NOT_ELIGIBLE;
+
+  // Remarks Generation
+  let remarksEn = '';
+  let remarksTa = '';
+
+  if (status === 'STRONG_MATCH') {
+    remarksEn = 'Strong Match! Your profile satisfies all policy criteria and required proof documents are attached.';
+    remarksTa = 'முழு பொருத்தம்! உங்கள் சுயவிவரம் அனைத்து தகுதி விதிகளையும் பூர்த்தி செய்துள்ளது.';
+  } else if (status === 'POTENTIAL_MATCH') {
+    const docNamesEn = missingDocuments.map((d) => d.label.en).join(', ');
+    const docNamesTa = missingDocuments.map((d) => d.label.ta).join(', ');
+    remarksEn = `Potential Match! Profile criteria met. Please upload required proof document(s): ${docNamesEn}.`;
+    remarksTa = `சாத்தியமான தகுதி! சுயவிவர விதிகள் நிறைவேறின. விடுபட்ட சான்றிதழ்களைப் பதிவேற்றவும்: ${docNamesTa}.`;
+  } else if (status === 'NEEDS_INFORMATION') {
+    const fieldNamesEn = missingInformation.map((f) => f.label.en).join(', ');
+    const fieldNamesTa = missingInformation.map((f) => f.label.ta).join(', ');
+    remarksEn = `More Information Needed! To complete eligibility evaluation, please update profile details: ${fieldNamesEn}.`;
+    remarksTa = `கூடுதல் தகவல் தேவை! உங்கள் சுயவிவரத்தில் இந்த விபரங்களைப் புதுப்பிக்கவும்: ${fieldNamesTa}.`;
+  } else {
+    if (triggeredExclusionCount > 0) {
+      const triggeredNames = exclusionBreakdown.filter((e) => e.passed).map((e) => e.label.en).join(', ');
+      remarksEn = `Not Eligible. Disqualified due to exclusion policy condition(s): ${triggeredNames}.`;
+      remarksTa = `தகுதியற்றது. விலக்கு நிபந்தனை பொருந்தியதால் இந்தத் திட்டத்திற்கு விண்ணப்பிக்க முடியாது.`;
+    } else {
+      remarksEn = 'Not Eligible. Profile criteria (such as income limit or age boundary) do not meet scheme requirements.';
+      remarksTa = 'தகுதியற்றது. வருமான வரம்பு அல்லது வயது வரம்பு போன்ற அடிப்படை நிபந்தனைகள் பொருந்தவில்லை.';
+    }
   }
 
   const hasVerifiedFact = Object.keys(docContext?.verifiedFacts || {}).length > 0;
   const hasConfirmedFact = Object.keys(docContext?.confirmedFacts || {}).length > 0;
 
-  const isVerifiedMatch = hasVerifiedFact;
-  const isPreliminaryMatch = !hasVerifiedFact && hasConfirmedFact;
-  const hasDataConflict = conflictDetails.length > 0;
-
-  // Generate Gap Analysis Remarks
-  let remarksEn = '';
-  let remarksTa = '';
-
-  if (status === 'ELIGIBLE') {
-    if (isVerifiedMatch) {
-      remarksEn = 'Eligible! Verified document information used in eligibility evaluation.';
-      remarksTa = 'தகுதியானது! சரிபார்க்கப்பட்ட ஆவணத் தகவல் தகுதி மதிப்பீட்டில் பயன்படுத்தப்பட்டது.';
-    } else if (isPreliminaryMatch) {
-      remarksEn = 'Potentially Eligible! Preliminary scheme matching based on attached document (Pending Officer Review).';
-      remarksTa = 'சாத்தியமான தகுதி! இணைக்கப்பட்ட சான்றிதழின் அடிப்படையில் முதற்கட்ட தகுதி பொருத்தம் (அதிகாரி சரிபார்ப்பு நிலுவையில் உள்ளன).';
-    } else {
-      remarksEn = 'Congratulations! You meet all configured eligibility criteria and have prepared required proof documents.';
-      remarksTa = 'வாழ்த்துக்கள்! நீங்கள் அனைத்து தகுதி அளவுகோல்களையும் பூர்த்தி செய்து தேவையான சான்றிதழ்களை தயார் வைத்துள்ளீர்கள்.';
-    }
-  } else if (status === 'NEAR_ELIGIBLE') {
-    const docNamesEn = missingDocuments.map((d) => d.label.en).join(', ');
-    const docNamesTa = missingDocuments.map((d) => d.label.ta).join(', ');
-
-    if (missingMandatoryDocsCount > 0) {
-      remarksEn = `Needs More Information! To complete eligibility, please upload missing proof document(s): ${docNamesEn}.`;
-      remarksTa = `கூடுதல் தகவல் தேவை! தகுதியை முழுமையாக்க விடுபட்ட சான்றிதழ்களைப் பதிவேற்றவும்: ${docNamesTa}.`;
-    } else {
-      remarksEn = 'Needs More Information! Please review your profile data and criteria breakdown above for unresolved fields.';
-      remarksTa = 'கூடுதல் தகவல் தேவை! உங்கள் சுயவிவரத் தகவல்களைச் சரிபார்த்து புதுப்பிக்கவும்.';
-    }
-  } else {
-    remarksEn = 'Currently ineligible based on core policy criteria (such as income limit, age boundary, or target school background).';
-    remarksTa = 'அடிப்படை நிபந்தனைகள் (வருமான வரம்பு, வயது அல்லது கல்வி வகை) பொருந்தாததால் தற்போது தகுதியற்றது.';
-  }
-
   return {
     status,
-    isPreliminaryMatch,
-    isVerifiedMatch,
-    hasDataConflict,
+    statusBadge,
+    isPreliminaryMatch: !hasVerifiedFact && hasConfirmedFact,
+    isVerifiedMatch: hasVerifiedFact,
+    hasDataConflict: conflictDetails.length > 0,
     conflictDetails,
     criteriaBreakdown,
+    exclusionBreakdown,
+    missingInformation,
     missingDocuments,
     failedMandatoryCount,
+    triggeredExclusionCount,
     gapAnalysisRemarks: { en: remarksEn, ta: remarksTa }
   };
 };
+

@@ -202,7 +202,7 @@ export const SchemeDetailPage: React.FC = () => {
             <div className="space-y-3 text-xs">
               <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl">
                 <span className="font-bold text-blue-900 block mb-1">
-                  {isTa ? '1. இத்தளத்தின் உதவி வழிமுறை (Platform Assisted)' : '1. Prototype Application Assistance'}
+                  {isTa ? '1. இத்தளத்தின் உதவி வழிமுறை (Platform Assisted)' : '1. Platform Assisted Application'}
                 </span>
                 <p className="text-blue-950 text-[11px] leading-relaxed">
                   {isTa ? 'எங்கள் வழிகாட்டி மூலம் படிவங்களை நிரப்பி, OCR ஆவணங்களை சரிபார்த்து TNP-WP குறிப்பு எண் பெறலாம்.' : 'Fill multi-step guided forms, scan documents with OCR, generate reference TNP-WP-2026-XXXXXX.'}
@@ -220,16 +220,16 @@ export const SchemeDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Academic Prototype Disclaimer Card */}
+          {/* Official Verification Information Note */}
           <div className="p-4 bg-slate-100 border border-slate-300 rounded-2xl text-xs text-slate-600 space-y-1">
             <div className="flex items-center space-x-1.5 font-bold text-slate-800">
               <Info className="w-4 h-4 text-blue-900 shrink-0" />
-              <span>{isTa ? 'கல்வித் திட்ட அறிவிப்பு' : 'Academic Project Disclaimer'}</span>
+              <span>{isTa ? 'முக்கிய அறிவிப்பு' : 'Information Note'}</span>
             </div>
             <p className="text-[11px] leading-relaxed text-slate-500">
               {isTa 
-                ? 'தமிழ்நாடு WelfarePath ஒரு கல்விசார் மாதிரித் திட்டமாகும். இது குடிமக்களுக்கு விண்ணப்ப உதவிகளை மட்டுமே வழங்குகிறது.'
-                : 'Tamil Nadu WelfarePath is an educational final-year prototype providing application assistance, document readiness, and journey tracking.'}
+                ? 'திட்ட நிபந்தனைகள் மற்றும் விண்ணப்ப நடைமுறைகளைச் சம்பந்தப்பட்ட அரசுத் துறையின் மூலம் உறுதிப்படுத்திக் கொள்ளவும்.'
+                : 'Please confirm scheme conditions and application procedures through the relevant official department.'}
             </p>
           </div>
         </div>

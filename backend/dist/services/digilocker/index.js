@@ -17,4 +17,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./DigiLockerTypes"), exports);
 __exportStar(require("./DigiLockerProvider"), exports);
 __exportStar(require("./DigiLockerMockProvider"), exports);
+__exportStar(require("./DigiLockerSandboxProvider"), exports);
+__exportStar(require("./DigiLockerProductionProvider"), exports);
 __exportStar(require("./DigiLockerProviderFactory"), exports);
+__exportStar(require("./DigiLockerSecurityService"), exports);

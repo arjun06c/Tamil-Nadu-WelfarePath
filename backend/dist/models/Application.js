@@ -75,6 +75,10 @@ const ApplicationSchema = new mongoose_1.Schema({
     officerRemarks: { type: String, default: '' },
     correctionCount: { type: Number, default: 0 },
     assignedOfficerId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+    approvedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: { type: Date },
+    rejectedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+    rejectedAt: { type: Date },
     declarationAccepted: { type: Boolean, default: true },
     submittedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
