@@ -12,10 +12,17 @@ import { authenticateJWT } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Setup Multer Storage
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/documents');
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// Setup Multer Storage (use /tmp on Vercel serverless)
+const UPLOAD_DIR = process.env.VERCEL
+  ? path.join('/tmp', 'uploads', 'documents')
+  : path.join(__dirname, '../../uploads/documents');
+
+try {
+  if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn('[Storage] Warning initializing upload directory:', err);
 }
 
 const storage = multer.diskStorage({

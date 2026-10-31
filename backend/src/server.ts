@@ -29,7 +29,10 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Static Document Storage & Mock Assets
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+const uploadStaticDir = process.env.VERCEL
+  ? path.join('/tmp', 'uploads')
+  : path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadStaticDir));
 app.use('/mock-documents', express.static(path.join(__dirname, '../public/mock-documents')));
 app.use('/api/documents/static', express.static(path.join(__dirname, '../public/mock-documents')));
 
@@ -67,21 +70,43 @@ app.use('/api/citizen', citizenRoutes);
 app.use('/api/officer/reports', officerReportRoutes);
 app.use('/api/admin/reports', officerReportRoutes);
 
+// Ensure DB connection for serverless requests
+let dbInitPromise: Promise<void> | null = null;
+const ensureDB = async () => {
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      await connectDB();
+      try {
+        const domainCount = await WelfareDomain.countDocuments();
+        const userCount = await User.countDocuments();
+        const appCount = await ApplicationModel.countDocuments();
+        if (domainCount === 0 || userCount === 0 || appCount < 10) {
+          console.log('[Auto-Seed] Initializing master database & default user accounts...');
+          await seedDatabase();
+        }
+      } catch (seedErr) {
+        console.warn('[Auto-Seed Warning]:', seedErr);
+      }
+    })();
+  }
+  return dbInitPromise;
+};
+
+app.use(async (_req: Request, _res: Response, next) => {
+  try {
+    await ensureDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Global Error Handler
 app.use(errorHandler);
 
-// Connect Database & Start Server
+// Connect Database & Start Server for local/persistent environments
 const startServer = async () => {
-  await connectDB();
-
-  // Auto-seed if database is unpopulated or missing seeded users
-  const domainCount = await WelfareDomain.countDocuments();
-  const userCount = await User.countDocuments();
-  const appCount = await ApplicationModel.countDocuments();
-  if (domainCount === 0 || userCount === 0 || appCount < 10) {
-    console.log('[Auto-Seed] Initializing master database & default user accounts...');
-    await seedDatabase();
-  }
+  await ensureDB();
 
   app.listen(env.PORT, () => {
     console.log(`========================================================`);
@@ -92,4 +117,8 @@ const startServer = async () => {
   });
 };
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;

@@ -7,10 +7,17 @@ import { Application, ApplicationStatus } from '../models/Application';
 import { Notification } from '../models/Notification';
 import { UserRole } from '../models/User';
 
-// Ensure upload directory exists
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/documents');
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// Ensure upload directory exists (use /tmp on Vercel serverless)
+const UPLOAD_DIR = process.env.VERCEL
+  ? path.join('/tmp', 'uploads', 'documents')
+  : path.join(__dirname, '../../uploads/documents');
+
+try {
+  if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn('[Storage] Warning initializing upload directory:', err);
 }
 
 const MOCK_DIR = path.join(__dirname, '../../public/mock-documents');
