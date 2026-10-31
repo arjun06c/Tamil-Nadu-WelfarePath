@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Runtime uploads
+uploads/documents/doc-*
+!uploads/documents/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Temp & OS
+.DS_Store
+Thumbs.db

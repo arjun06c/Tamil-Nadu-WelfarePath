@@ -9,6 +9,7 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET || 'tn_welfarepath_super_secure_jwt_secret_key_2026',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   NODE_ENV: process.env.NODE_ENV || 'development',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
   
   // DigiLocker Integration Config
   DIGILOCKER_MODE: (process.env.DIGILOCKER_MODE as 'mock' | 'sandbox' | 'production') || 'mock',
