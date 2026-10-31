@@ -47,6 +47,16 @@ app.use((req: Request, res: Response, next) => {
   next();
 });
 
+// Root Landing Route
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ONLINE',
+    message: 'Tamil Nadu WelfarePath API Server is Live & Healthy!',
+    healthCheck: '/api/health',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health Check Endpoint
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
