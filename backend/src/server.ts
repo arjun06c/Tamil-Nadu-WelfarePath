@@ -1,4 +1,5 @@
 import express, { Application, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import { env } from './config/env';
 import { connectDB } from './config/db';
@@ -47,6 +48,37 @@ app.use((req: Request, res: Response, next) => {
   next();
 });
 
+// Ensure DB connection for serverless requests (Must run BEFORE API routes)
+let isSeeding = false;
+const ensureDB = async () => {
+  if ((mongoose.connection.readyState as number) !== 1) {
+    await connectDB();
+  }
+  if (!isSeeding) {
+    try {
+      const userCount = await User.countDocuments();
+      if (userCount === 0) {
+        isSeeding = true;
+        console.log('[Auto-Seed] Initializing master database & default user accounts...');
+        await seedDatabase();
+      }
+    } catch (seedErr) {
+      console.warn('[Auto-Seed Warning]:', seedErr);
+    } finally {
+      isSeeding = false;
+    }
+  }
+};
+
+app.use(async (_req: Request, _res: Response, next) => {
+  try {
+    await ensureDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Root Landing Route
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
@@ -62,8 +94,28 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
     system: 'Tamil Nadu WelfarePath API Engine',
+    dbState: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
     timestamp: new Date().toISOString()
   });
+});
+
+// Explicit Database Seed Endpoint
+app.get('/api/seed', async (_req: Request, res: Response) => {
+  try {
+    await ensureDB();
+    await seedDatabase();
+    res.status(200).json({
+      status: 'OK',
+      message: 'Master database and demo user accounts seeded successfully!',
+      credentials: {
+        admin: { email: 'admin@tnwelfare.gov.in', password: 'Admin@123' },
+        officer: { email: 'officer@tnwelfare.gov.in', password: 'Officer@123' },
+        citizen: { email: 'citizen@gmail.com', password: 'Citizen@123' }
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'ERROR', message: err.message });
+  }
 });
 
 // API Routes
@@ -79,37 +131,6 @@ app.use('/api/integrations/digilocker', digilockerRoutes);
 app.use('/api/citizen', citizenRoutes);
 app.use('/api/officer/reports', officerReportRoutes);
 app.use('/api/admin/reports', officerReportRoutes);
-
-// Ensure DB connection for serverless requests
-let dbInitPromise: Promise<void> | null = null;
-const ensureDB = async () => {
-  if (!dbInitPromise) {
-    dbInitPromise = (async () => {
-      await connectDB();
-      try {
-        const domainCount = await WelfareDomain.countDocuments();
-        const userCount = await User.countDocuments();
-        const appCount = await ApplicationModel.countDocuments();
-        if (domainCount === 0 || userCount === 0 || appCount < 10) {
-          console.log('[Auto-Seed] Initializing master database & default user accounts...');
-          await seedDatabase();
-        }
-      } catch (seedErr) {
-        console.warn('[Auto-Seed Warning]:', seedErr);
-      }
-    })();
-  }
-  return dbInitPromise;
-};
-
-app.use(async (_req: Request, _res: Response, next) => {
-  try {
-    await ensureDB();
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
 
 // Global Error Handler
 app.use(errorHandler);
