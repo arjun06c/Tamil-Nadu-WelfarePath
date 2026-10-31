@@ -5,7 +5,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 export const env = {
   PORT: process.env.PORT || 5000,
-  MONGO_URI: process.env.MONGO_URI || 'mongodb+srv://admin:admin123@cluster0.qlafckz.mongodb.net/tn_welfarepath?retryWrites=true&w=majority',
+  MONGO_URI: process.env.MONGO_URI || 'mongodb+srv://arjun06c_db_user:admin123@cluster0.qlafckz.mongodb.net/tn_welfarepath?retryWrites=true&w=majority',
   JWT_SECRET: process.env.JWT_SECRET || 'tn_welfarepath_super_secure_jwt_secret_key_2026',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   NODE_ENV: process.env.NODE_ENV || 'development',
