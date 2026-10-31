@@ -1,21 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { AcademicDisclaimerBanner } from '../common/AcademicDisclaimerBanner';
 import { OfficerSidebar } from '../navigation/OfficerSidebar';
 import { OfficerHeader } from '../navigation/OfficerHeader';
+import { DashboardLayoutShell } from './DashboardLayoutShell';
 
 export const OfficerLayout: React.FC = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <div className="flex flex-1">
-        <OfficerSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <OfficerHeader />
-          <main className="flex-1 p-6 overflow-y-auto">
-            <Outlet />
-          </main>
-        </div>
-      </div>
-    </div>
+    <DashboardLayoutShell
+      sidebarCollapsed={sidebarCollapsed}
+      expandedPaddingClass="lg:pl-64"
+      bgClass="bg-slate-50 text-slate-900"
+      contentContainerClass="p-4 md:p-6 w-full"
+      sidebar={
+        <OfficerSidebar
+          isMobileOpen={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+      }
+      header={<OfficerHeader onOpenMobileMenu={() => setMobileMenuOpen(true)} />}
+    >
+      <Outlet />
+    </DashboardLayoutShell>
   );
 };

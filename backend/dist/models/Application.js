@@ -39,9 +39,11 @@ var ApplicationStatus;
 (function (ApplicationStatus) {
     ApplicationStatus["DRAFT"] = "DRAFT";
     ApplicationStatus["SUBMITTED"] = "SUBMITTED";
+    ApplicationStatus["UNDER_REVIEW"] = "UNDER_REVIEW";
     ApplicationStatus["DOC_VERIFICATION"] = "DOC_VERIFICATION";
-    ApplicationStatus["CORRECTION_REQUIRED"] = "CORRECTION_REQUIRED";
     ApplicationStatus["OFFICER_REVIEW"] = "OFFICER_REVIEW";
+    ApplicationStatus["CORRECTION_REQUIRED"] = "CORRECTION_REQUIRED";
+    ApplicationStatus["RESUBMITTED"] = "RESUBMITTED";
     ApplicationStatus["APPROVED"] = "APPROVED";
     ApplicationStatus["REJECTED"] = "REJECTED";
     ApplicationStatus["BENEFIT_RELEASED"] = "BENEFIT_RELEASED";
@@ -52,6 +54,7 @@ const ApplicationSchema = new mongoose_1.Schema({
     applicationReference: { type: String, required: true, unique: true },
     citizenId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
     schemeId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Scheme', required: true },
+    district: { type: String, required: true, default: 'Chennai' },
     applicationMethod: { type: String, default: 'PROTOTYPE_ASSISTED' },
     status: {
         type: String,
@@ -75,6 +78,10 @@ const ApplicationSchema = new mongoose_1.Schema({
     officerRemarks: { type: String, default: '' },
     correctionCount: { type: Number, default: 0 },
     assignedOfficerId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+    assignedAt: { type: Date },
+    verificationStartedAt: { type: Date },
+    eligibilityReviews: { type: Object, default: {} },
+    verificationChecklist: { type: Object, default: {} },
     approvedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
     approvedAt: { type: Date },
     rejectedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },

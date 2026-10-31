@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 540" width="850" height="540">
+  <defs>
+    <style>
+      .card-title { font-family: 'Arial', sans-serif; font-weight: bold; fill: #064e3b; }
+      .tamil { font-family: 'Arial Unicode MS', 'Plus Jakarta Sans', sans-serif; font-weight: bold; fill: #064e3b; }
+      .label { font-family: 'Arial', sans-serif; font-size: 11px; fill: #475569; font-weight: bold; }
+      .val { font-family: 'Arial', sans-serif; font-size: 13.5px; fill: #0f172a; font-weight: bold; }
+      .watermark { font-family: 'Arial', sans-serif; font-size: 24px; font-weight: 900; fill: rgba(220, 38, 38, 0.14); text-anchor: middle; letter-spacing: 3px; }
+      .ration-num { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 900; fill: #047857; letter-spacing: 3px; }
+    </style>
+  </defs>
+
+  <rect width="850" height="540" fill="#f8fafc"/>
+  
+  <!-- Outer Card Frame -->
+  <rect x="15" y="15" width="820" height="510" rx="16" fill="#ffffff" stroke="#047857" stroke-width="2"/>
+  <rect x="22" y="22" width="806" height="496" rx="12" fill="#f0fdf4" stroke="#86efac" stroke-width="1"/>
+
+  <!-- Watermark -->
+  <g transform="translate(425, 270) rotate(-22)">
+    <text y="-80" class="watermark">★ MOCK CITIZEN DOCUMENT ★</text>
+    <text y="-40" class="watermark">PROTOTYPE DEMONSTRATION ONLY</text>
+    <text y="10" class="watermark" font-size="28" fill="rgba(220, 38, 38, 0.18)">NOT A VALID RATION CARD</text>
+    <text y="60" class="watermark">FOR AUDIT SIMULATION ONLY</text>
+  </g>
+
+  <!-- Green Top Ribbon -->
+  <rect x="22" y="22" width="806" height="65" rx="12" fill="#065f46"/>
+  <rect x="22" y="60" width="806" height="27" fill="#065f46"/>
+
+  <!-- Header Header -->
+  <g transform="translate(40, 32)">
+    <!-- Simulated Rice/Sprout Emblem -->
+    <circle cx="28" cy="24" r="20" fill="#ecfdf5" stroke="#34d399" stroke-width="1.5"/>
+    <path d="M 28 10 C 22 18, 22 28, 28 34 C 34 28, 34 18, 28 10 Z" fill="#047857"/>
+
+    <text x="65" y="20" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#a7f3d0">தமிழ்நாடு அரசு • உணவு மற்றும் நுகர்வோர் பாதுகாப்புத் துறை</text>
+    <text x="65" y="38" font-family="'Arial', sans-serif" font-size="15" font-weight="900" fill="#ffffff">GOVERNMENT OF TAMIL NADU • SMART RATION CARD</text>
+    <text x="65" y="52" font-family="'Arial', sans-serif" font-size="10" fill="#d1fae5">Civil Supplies and Consumer Protection Department</text>
+  </g>
+
+  <text x="810" y="58" font-family="'Arial', sans-serif" font-size="12" font-weight="900" fill="#fef08a" text-anchor="end">PHH - NFSA</text>
+
+  <!-- Card Body -->
+  <g transform="translate(40, 105)">
+    <!-- Photo Box -->
+    <rect x="0" y="0" width="120" height="150" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+    <circle cx="60" cy="50" r="28" fill="#94a3b8"/>
+    <path d="M 20 140 C 20 95, 100 95, 100 140 Z" fill="#64748b"/>
+    <text x="60" y="165" font-family="'Arial', sans-serif" font-size="9" font-weight="bold" fill="#065f46" text-anchor="middle">FAMILY HEAD</text>
+
+    <!-- Details Column -->
+    <g transform="translate(140, 5)">
+      <text x="0" y="15" class="label">HEAD OF FAMILY / குடும்பத் தலைவர்:</text>
+      <text x="0" y="34" class="val" font-size="15" fill="#0f172a">RAMASAMY M (ராமசாமி மு)</text>
+
+      <text x="0" y="65" class="label">RESIDENTIAL ADDRESS / முகவரி:</text>
+      <text x="0" y="82" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#334155">14, Kamarajar Street, Anuppanadi,</text>
+      <text x="0" y="98" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#334155">Madurai South, Madurai - 625009</text>
+
+      <text x="0" y="125" class="label">FAIR PRICE SHOP CODE:</text>
+      <text x="0" y="142" class="val">FPS-MDU-042 (Anuppanadi W-14)</text>
+
+      <text x="260" y="125" class="label">CARD COMMODITY TYPE:</text>
+      <text x="260" y="142" class="val" fill="#047857">PHH - ALL COMMODITIES (RICE)</text>
+    </g>
+
+    <!-- QR Code Block -->
+    <g transform="translate(630, 5)">
+      <rect x="0" y="0" width="130" height="130" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+      <rect x="12" y="12" width="106" height="106" fill="#064e3b"/>
+      <rect x="25" y="25" width="26" height="26" fill="#ffffff"/>
+      <rect x="30" y="30" width="16" height="16" fill="#064e3b"/>
+      <rect x="75" y="25" width="26" height="26" fill="#ffffff"/>
+      <rect x="80" y="30" width="16" height="16" fill="#064e3b"/>
+      <rect x="25" y="75" width="26" height="26" fill="#ffffff"/>
+      <rect x="30" y="80" width="16" height="16" fill="#064e3b"/>
+      <text x="65" y="150" font-family="'Arial', sans-serif" font-size="9" fill="#047857" text-anchor="middle">TNePDS QR Code</text>
+    </g>
+  </g>
+
+  <!-- Big Smart Card Number Bar -->
+  <g transform="translate(40, 290)">
+    <rect width="770" height="48" rx="8" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.2"/>
+    <text x="20" y="32" class="label">SMART RATION CARD NO / குடும்ப அட்டை எண்:</text>
+    <text x="340" y="33" class="ration-num">33 / W / 0291847</text>
+  </g>
+
+  <!-- Family Members Table -->
+  <g transform="translate(40, 350)">
+    <rect width="770" height="105" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+    
+    <rect x="0" y="0" width="770" height="26" fill="#047857" rx="4"/>
+    <text x="30" y="17" font-family="'Arial', sans-serif" font-size="10.5" font-weight="bold" fill="#ffffff">S.No</text>
+    <text x="140" y="17" font-family="'Arial', sans-serif" font-size="10.5" font-weight="bold" fill="#ffffff">Family Member Name</text>
+    <text x="320" y="17" font-family="'Arial', sans-serif" font-size="10.5" font-weight="bold" fill="#ffffff">Relationship</text>
+    <text x="460" y="17" font-family="'Arial', sans-serif" font-size="10.5" font-weight="bold" fill="#ffffff">Age / Gender</text>
+    <text x="640" y="17" font-family="'Arial', sans-serif" font-size="10.5" font-weight="bold" fill="#ffffff">Aadhaar Status</text>
+
+    <!-- Member 1 -->
+    <text x="30" y="44" font-family="'Arial', sans-serif" font-size="11">1</text>
+    <text x="140" y="44" font-family="'Arial', sans-serif" font-size="11" font-weight="bold">Ramasamy M</text>
+    <text x="320" y="44" font-family="'Arial', sans-serif" font-size="11">Head of Family</text>
+    <text x="460" y="44" font-family="'Arial', sans-serif" font-size="11">49 / Male</text>
+    <text x="640" y="44" font-family="'Arial', sans-serif" font-size="11" fill="#047857" font-weight="bold">Linked (XXXX-1029)</text>
+
+    <!-- Member 2 -->
+    <text x="30" y="70" font-family="'Arial', sans-serif" font-size="11">2</text>
+    <text x="140" y="70" font-family="'Arial', sans-serif" font-size="11" font-weight="bold">Meenakshi R</text>
+    <text x="320" y="70" font-family="'Arial', sans-serif" font-size="11">Wife</text>
+    <text x="460" y="70" font-family="'Arial', sans-serif" font-size="11">44 / Female</text>
+    <text x="640" y="70" font-family="'Arial', sans-serif" font-size="11" fill="#047857" font-weight="bold">Linked (XXXX-4819)</text>
+
+    <!-- Member 3 (Applicant) -->
+    <rect x="0" y="80" width="770" height="25" fill="#eff6ff"/>
+    <text x="30" y="97" font-family="'Arial', sans-serif" font-size="11">3</text>
+    <text x="140" y="97" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#1e40af">Kavitha R (Applicant)</text>
+    <text x="320" y="97" font-family="'Arial', sans-serif" font-size="11" fill="#1e40af">Daughter</text>
+    <text x="460" y="97" font-family="'Arial', sans-serif" font-size="11" fill="#1e40af">21 / Female</text>
+    <text x="640" y="97" font-family="'Arial', sans-serif" font-size="11" fill="#047857" font-weight="bold">Linked (XXXX-8921)</text>
+  </g>
+
+  <!-- Disclaimer Footer -->
+  <g transform="translate(40, 465)">
+    <rect width="770" height="42" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1"/>
+    <text x="385" y="18" font-family="'Arial', sans-serif" font-size="10.5" font-weight="900" fill="#991b1b" text-anchor="middle">
+      PROTOTYPE MOCK DOCUMENT — NOT AN AUTHENTIC RATION CARD
+    </text>
+    <text x="385" y="33" font-family="'Arial', sans-serif" font-size="9" font-weight="bold" fill="#b91c1c" text-anchor="middle">
+      Civil Supplies data simulated exclusively for TN WelfarePath system prototype testing and officer audit demonstration.
+    </text>
+  </g>
+</svg>

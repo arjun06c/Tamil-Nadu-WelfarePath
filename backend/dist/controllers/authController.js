@@ -10,8 +10,8 @@ const User_1 = require("../models/User");
 const CitizenProfile_1 = require("../models/CitizenProfile");
 const authValidator_1 = require("../validators/authValidator");
 const env_1 = require("../config/env");
-const generateToken = (id, role, email, name) => {
-    return jsonwebtoken_1.default.sign({ id, role, email, name }, env_1.env.JWT_SECRET, {
+const generateToken = (id, role, email, name, district) => {
+    return jsonwebtoken_1.default.sign({ id, role, email, name, district }, env_1.env.JWT_SECRET, {
         expiresIn: env_1.env.JWT_EXPIRES_IN
     });
 };
@@ -65,7 +65,7 @@ const register = async (req, res) => {
                 dependentsCount: 2
             });
         }
-        const token = generateToken(user._id.toString(), user.role, user.email, user.name);
+        const token = generateToken(user._id.toString(), user.role, user.email, user.name, user.district);
         res.status(201).json({
             message: 'Registration successful',
             token,
@@ -107,7 +107,7 @@ const login = async (req, res) => {
             res.status(401).json({ message: 'Invalid email or password.' });
             return;
         }
-        const token = generateToken(user._id.toString(), user.role, user.email, user.name);
+        const token = generateToken(user._id.toString(), user.role, user.email, user.name, user.district);
         res.status(200).json({
             message: 'Login successful',
             token,

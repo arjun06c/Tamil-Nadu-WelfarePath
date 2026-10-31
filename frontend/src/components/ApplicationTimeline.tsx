@@ -25,52 +25,50 @@ export const ApplicationTimeline: React.FC<ApplicationTimelineProps> = ({
       key: 'SUBMITTED',
       labelEn: 'Application Submitted',
       labelTa: 'விண்ணப்பம் சமர்ப்பிக்கப்பட்டது',
-      descEn: 'Citizen application logged into WelfarePath portal.',
+      descEn: 'Citizen application logged into Tamil Nadu WelfarePath portal.',
       descTa: 'விண்ணப்பம் வெற்றிகரமாக பதிவு செய்யப்பட்டது.'
     },
     {
-      key: 'DOC_VERIFICATION',
-      labelEn: 'Document Verification',
-      labelTa: 'சான்றிதழ் சரிபார்ப்பு',
-      descEn: pendingDocCount > 0 
-        ? `${pendingDocCount} document(s) awaiting officer verification.`
-        : 'Supporting certificates under officer verification.',
-      descTa: 'சான்றிதழ்கள் அதிகாரி சரிபார்ப்பில் உள்ளன.'
+      key: 'RECEIVED',
+      labelEn: 'Received by District Officer',
+      labelTa: 'மாவட்ட அலுவலரால் பெறப்பட்டது',
+      descEn: 'Assigned to District Welfare Officer jurisdiction queue.',
+      descTa: 'மாவட்ட நல அலுவலர் பணிவரிசைக்கு மாற்றப்பட்டது.'
     },
     {
-      key: 'OFFICER_REVIEW',
-      labelEn: 'Officer Review',
-      labelTa: 'அதிகாரி பரிசீலனை',
-      descEn: 'Authorized reviewing officer evaluating eligibility entitlement.',
-      descTa: 'அதிகாரி தகுதியை ஆய்வு செய்கிறார்.'
+      key: 'UNDER_REVIEW',
+      labelEn: 'Verification Started',
+      labelTa: 'சரிபார்ப்பு தொடங்கியது',
+      descEn: 'Officer conducting active examination of eligibility & case parameters.',
+      descTa: 'அதிகாரி தகுதி மற்றும் விபரங்களை ஆய்வு செய்கிறார்.'
     },
     {
-      key: 'APPROVED',
-      labelEn: 'Application Approval',
-      labelTa: 'விண்ணப்ப அங்கீகாரம்',
-      descEn: 'Application approved by authorized reviewing officer.',
-      descTa: 'விண்ணப்பம் அதிகாரியால் அங்கீகரிக்கப்பட்டது.'
+      key: 'DOCS_VERIFIED',
+      labelEn: 'Documents Verified',
+      labelTa: 'ஆவணங்கள் சரிபார்க்கப்பட்டது',
+      descEn: 'Supporting certificates verified against civil registries and DigiLocker.',
+      descTa: 'சான்றிதழ்கள் அனைத்தும் அதிகாரியால் சரிபார்க்கப்பட்டன.'
     },
     {
-      key: 'BENEFIT_RELEASED',
-      labelEn: 'Benefit Release',
-      labelTa: 'உதவித்தொகை வழங்கல்',
-      descEn: 'Benefit disbursement active and credited to account.',
-      descTa: 'உதவித்தொகை வங்கி கணக்கில் வழங்கப்பட்டது.'
+      key: 'DECISION',
+      labelEn: 'Final Decision',
+      labelTa: 'இறுதி ஆணை / முடிவு',
+      descEn: currentStatus === 'APPROVED' ? 'Statutory approval issued and benefit sanctioned.' : currentStatus === 'REJECTED' ? 'Application rejected with official rationale.' : 'Final administrative decision pending.',
+      descTa: currentStatus === 'APPROVED' ? 'அங்கீகரிக்கப்பட்டு உதவித்தொகை அனுமதிக்கப்பட்டது.' : currentStatus === 'REJECTED' ? 'விண்ணப்பம் நிராகரிக்கப்பட்டது.' : 'இறுதி முடிவு நிலுவையில் உள்ளது.'
     }
   ];
 
   // Determine current active step index (0-4)
   let activeIndex = 0;
-  if (currentStatus === 'SUBMITTED') activeIndex = 0;
-  if (currentStatus === 'DOC_VERIFICATION') activeIndex = 1;
-  if (currentStatus === 'CORRECTION_REQUIRED') activeIndex = 1;
-  if (currentStatus === 'OFFICER_REVIEW') activeIndex = 2;
-  if (currentStatus === 'APPROVED') activeIndex = 3;
-  if (currentStatus === 'BENEFIT_RELEASED' || currentStatus === 'COMPLETED') activeIndex = 4;
-  if (currentStatus === 'REJECTED') activeIndex = 3;
+  if (currentStatus === 'SUBMITTED') activeIndex = 1; // Citizen submitted, waiting for officer review
+  if (currentStatus === 'UNDER_REVIEW' || currentStatus === 'DOC_VERIFICATION') activeIndex = 2;
+  if (currentStatus === 'CORRECTION_REQUIRED') activeIndex = 2;
+  if (currentStatus === 'RESUBMITTED') activeIndex = 2;
+  if (currentStatus === 'OFFICER_REVIEW') activeIndex = 3;
+  if (currentStatus === 'APPROVED' || currentStatus === 'BENEFIT_RELEASED' || currentStatus === 'COMPLETED' || currentStatus === 'REJECTED') activeIndex = 4;
 
   const isRejected = currentStatus === 'REJECTED';
+  const isApproved = currentStatus === 'APPROVED' || currentStatus === 'BENEFIT_RELEASED' || currentStatus === 'COMPLETED';
   const isCorrection = currentStatus === 'CORRECTION_REQUIRED';
 
   return (

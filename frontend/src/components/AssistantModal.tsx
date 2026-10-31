@@ -51,7 +51,7 @@ export const AssistantModal: React.FC = () => {
         ? 'வணக்கம்! நான் உங்கள் தமிழ்நாடு நலன்பாதை வழிகாட்டி. உங்களுக்குத் தேவையான அரசு நலத்திட்டங்கள், தகுதி நிபந்தனைகள், ஆவணங்கள் மற்றும் விண்ணப்ப நிலை குறித்து என்னிடம் கேட்கலாம்!'
         : 'Hello! I am your Tamil Nadu WelfarePath Assistant. Ask me about eligible schemes, rule conditions, missing documents, or application status!',
       actionButtons: [
-        { label: isTa ? 'என் தகுதியைச் சோதிக்க' : 'Check My Eligibility', path: '/citizen/schemes', actionType: 'ELIGIBILITY_CHECK' },
+        { label: isTa ? 'என் தகுதியைச் சோதிக்க' : 'Check My Eligibility', path: '/citizen/eligible-schemes', actionType: 'ELIGIBILITY_CHECK' },
         { label: isTa ? 'திட்டங்களைக் காண்க' : 'Explore Schemes', path: '/citizen/schemes', actionType: 'NAVIGATE' },
         { label: isTa ? 'விண்ணப்ப நிலை' : 'Application Status', path: '/citizen/applications', actionType: 'NAVIGATE' },
         { label: isTa ? 'ஆவணங்கள்' : 'Required Docs', path: '/citizen/documents', actionType: 'NAVIGATE' }
@@ -164,9 +164,9 @@ export const AssistantModal: React.FC = () => {
         <div className="w-[360px] sm:w-[440px] h-[580px] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-teal-800 text-white p-4 flex items-center justify-between shadow-md">
+          <div className="bg-[#10243A] text-white p-4 flex items-center justify-between border-b border-[#1a385c]">
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+              <div className="w-9 h-9 rounded-full bg-teal-500/20 flex items-center justify-center border border-teal-400/30">
                 <Sparkles className="w-5 h-5 text-teal-300" />
               </div>
               <div>
@@ -196,15 +196,15 @@ export const AssistantModal: React.FC = () => {
               >
                 <div className="flex items-end space-x-2 max-w-full">
                   {msg.sender === 'bot' && (
-                    <div className="w-7 h-7 rounded-full bg-blue-900 text-white flex items-center justify-center text-xs mb-1 shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-[#10243A] text-white flex items-center justify-center text-xs mb-1 shrink-0">
                       <Bot className="w-4 h-4" />
                     </div>
                   )}
                   <div
                     className={`max-w-[85%] px-4 py-3 rounded-2xl leading-relaxed ${
                       msg.sender === 'user'
-                        ? 'bg-blue-900 text-white rounded-br-none shadow-xs font-medium'
-                        : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none shadow-xs'
+                        ? 'bg-[#10243A] text-white rounded-br-none shadow-xs font-medium'
+                        : 'bg-white text-[#172B4D] border border-slate-200 rounded-bl-none shadow-xs'
                     }`}
                   >
                     <p className="whitespace-pre-line">{msg.text}</p>
@@ -383,7 +383,7 @@ export const AssistantModal: React.FC = () => {
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className="p-2 bg-blue-900 hover:bg-blue-800 disabled:opacity-50 text-white rounded-xl transition-colors shadow-sm"
+              className="p-2 bg-[#10243A] hover:bg-[#1a385c] disabled:opacity-50 text-white rounded-xl transition-colors shadow-xs"
             >
               <Send className="w-4 h-4" />
             </button>

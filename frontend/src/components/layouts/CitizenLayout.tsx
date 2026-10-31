@@ -1,23 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { AcademicDisclaimerBanner } from '../common/AcademicDisclaimerBanner';
 import { CitizenSidebar } from '../navigation/CitizenSidebar';
 import { CitizenHeader } from '../navigation/CitizenHeader';
 import { AssistantModal } from '../AssistantModal';
+import { DashboardLayoutShell } from './DashboardLayoutShell';
 
 export const CitizenLayout: React.FC = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <div className="flex flex-1">
-        <CitizenSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <CitizenHeader />
-          <main className="flex-1 p-6 overflow-y-auto">
-            <Outlet />
-          </main>
-        </div>
-      </div>
-      <AssistantModal />
-    </div>
+    <DashboardLayoutShell
+      sidebarCollapsed={sidebarCollapsed}
+      expandedPaddingClass="lg:pl-68"
+      bgClass="bg-[#F4F7FB] text-[#172B4D]"
+      contentContainerClass="p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto"
+      sidebar={
+        <CitizenSidebar
+          isMobileOpen={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+      }
+      header={<CitizenHeader onOpenMobileMenu={() => setMobileMenuOpen(true)} />}
+      extraFloatingElements={<AssistantModal />}
+    >
+      <Outlet />
+    </DashboardLayoutShell>
   );
 };

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { SchemeCard } from '../components/SchemeCard';
+import { PageHeader } from '../components/common/PageHeader';
+import { EmptyState } from '../components/common/EmptyState';
 import {
   Search,
   Filter,
@@ -11,7 +13,6 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle2,
-  AlertTriangle,
   GraduationCap,
   Heart,
   ShieldAlert,
@@ -29,7 +30,9 @@ import {
   HeartHandshake,
   ChevronRight,
   Layers,
-  X
+  X,
+  Compass,
+  RotateCcw
 } from 'lucide-react';
 
 const iconComponents: Record<string, any> = {
@@ -60,6 +63,7 @@ export const SchemeDiscoveryPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [selectedDomain, setSelectedDomain] = useState(domainKeyParam);
+  const [selectedDepartment, setSelectedDepartment] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [loadingRecs, setLoadingRecs] = useState(false);
 
@@ -127,152 +131,208 @@ export const SchemeDiscoveryPage: React.FC = () => {
     }
   };
 
+  const handleClearFilters = () => {
+    setSearch('');
+    setSelectedDomain('');
+    setSelectedDepartment('ALL');
+    setSearchParams({});
+  };
+
   const activeDomainObj = domains.find((d) => d.domainKey === selectedDomain);
 
+  // Extract unique departments for filtering
+  const departments = Array.from(
+    new Set(
+      schemes
+        .map((s) => (isTa ? s.department?.ta || s.department?.en : s.department?.en))
+        .filter(Boolean)
+    )
+  );
+
+  // Filter schemes client-side by department if selected
+  const displayedSchemes = schemes.filter((scheme) => {
+    if (selectedDepartment === 'ALL') return true;
+    const dept = isTa ? scheme.department?.ta || scheme.department?.en : scheme.department?.en;
+    return dept === selectedDepartment;
+  });
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      
-      {/* 1. Header Section */}
-      <div className="text-center max-w-3xl mx-auto space-y-3">
-        <span className="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-blue-50 text-blue-900 border border-blue-200 inline-flex items-center space-x-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>{isTa ? 'தமிழ்நாடு நலத்திட்டக் கண்டறிதல் தளம்' : 'Tamil Nadu Welfare Discovery Platform'}</span>
-        </span>
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <PageHeader
+        title={isTa ? 'நலத்திட்டங்கள் கண்டறிதல்' : 'Discover Welfare Schemes'}
+        subtitle={
+          isTa
+            ? 'தமிழ்நாடு அரசின் அனைத்து நலத்திட்டங்கள், உதவித்தொகைகள் மற்றும் சலுகைகளின் அதிகாரப்பூர்வ பட்டியல்'
+            : 'Explore all authorized Government of Tamil Nadu welfare programs, subsidies, and grants'
+        }
+        badge={isTa ? 'அரசு நல களஞ்சியம்' : 'Official State Catalog'}
+        badgeVariant="blue"
+        icon={Compass}
+        breadcrumbs={[
+          { label: isTa ? 'முகப்பு' : 'Home', href: user ? '/citizen/dashboard' : '/' },
+          { label: isTa ? 'திட்டங்கள்' : 'Discover Schemes' }
+        ]}
+      />
 
-        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-          {isTa ? 'நலத்திட்டங்களை கண்டறியுங்கள்' : 'Discover Welfare Schemes'}
-        </h1>
+      {/* Global Search and Filter Bar */}
+      <div className="gov-card p-5 space-y-3.5">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          {/* Main Search Input */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={
+                isTa
+                  ? 'திட்டப் பெயர், துறை அல்லது முக்கிய சொல் மூலம் தேடுக...'
+                  : 'Search schemes by title, department, or keyword...'
+              }
+              className="gov-input pl-10 pr-9 text-xs sm:text-sm font-medium"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
-        <p className="text-xs sm:text-sm text-slate-600 font-medium">
-          {isTa
-            ? 'உங்கள் தகுதி, சுயவிவரம் மற்றும் வாழ்வாதாரத் தேவைகளின் அடிப்படையில் அரசு சலுகைகளைக் கண்டறியவும்.'
-            : 'Find welfare benefits based on your needs, profile and life situation.'}
-        </p>
-      </div>
+          {/* Department Filter Dropdown */}
+          <div className="relative md:w-60">
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="gov-input text-xs font-bold appearance-none pr-8 cursor-pointer"
+            >
+              <option value="ALL">
+                {isTa ? 'அனைத்து அரசுத் துறைகளும்' : 'All Departments'}
+              </option>
+              {departments.map((dept, i) => (
+                <option key={i} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+            <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
+          </div>
 
-      {/* 2. Global Search Bar */}
-      <div className="glass-card p-4 rounded-3xl max-w-3xl mx-auto shadow-md border border-slate-200/80">
-        <div className="relative">
-          <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={
-              isTa
-                ? 'திட்டப் பெயர், துறை அல்லது முக்கிய சொற்கள் மூலம் தேடவும்...'
-                : 'Search schemes by name, department, or eligibility keywords...'
-            }
-            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-900 focus:outline-none shadow-inner font-medium"
-          />
+          {/* Clear Filters Button */}
+          {(search || selectedDomain || selectedDepartment !== 'ALL') && (
+            <button
+              onClick={handleClearFilters}
+              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-colors shrink-0"
+              title="Reset all filters"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>{isTa ? 'வடிகட்டிகளை அழிக்க' : 'Reset'}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Welfare Sector Pills Filter */}
+        <div className="pt-2 border-t border-slate-100 flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={() => handleSelectDomain('')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+              !selectedDomain
+                ? 'bg-[#10243A] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {isTa ? 'அனைத்து துறைகளும்' : 'All Sectors'}
+          </button>
+          {domains.map((dom) => (
+            <button
+              key={dom._id}
+              onClick={() => handleSelectDomain(dom.domainKey)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+                selectedDomain === dom.domainKey
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {isTa ? dom.name?.ta : dom.name?.en} ({dom.schemeCount || 0})
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* 3. Recommended For You Section (If Authenticated and has recommendations) */}
-      {user && recommendations.length > 0 && !selectedDomain && !search && (
-        <div className="glass-card p-6 rounded-3xl border border-emerald-200 bg-emerald-50/20 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
-              <div>
-                <h2 className="text-base font-extrabold text-slate-900">
-                  {isTa ? 'உங்களுக்காகப் பரிந்துரைக்கப்பட்டவை (Recommended for You)' : 'Recommended for You'}
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  {isTa
-                    ? 'உங்கள் தற்போதைய சுயவிவரச் சான்றுகளின் அடிப்படையில் முதற்கட்ட பொருத்தம்'
-                    : 'Based on your current profile and uploaded credentials'}
-                </p>
-              </div>
+      {/* Active Domain Info Banner if selected */}
+      {selectedDomain && activeDomainObj && (
+        <div className="gov-card p-5 border-l-4 border-l-blue-600 bg-blue-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-900 border border-blue-200 flex items-center justify-center shrink-0">
+              {React.createElement(iconComponents[activeDomainObj.iconName] || Award, {
+                className: 'w-5 h-5'
+              })}
             </div>
-            <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
-              {recommendations.length} Matches
-            </span>
+            <div>
+              <h2 className="text-sm font-extrabold text-[#172B4D]">
+                {isTa ? activeDomainObj.name?.ta : activeDomainObj.name?.en}
+              </h2>
+              <p className="text-xs text-slate-600">
+                {isTa ? activeDomainObj.description?.ta : activeDomainObj.description?.en}
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recommendations.map((rec) => (
-              <div key={rec.scheme._id} className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-xs space-y-3 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-900 border border-blue-200">
-                      {rec.scheme.schemeCode}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center space-x-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                      <span>{isTa ? rec.matchReason?.ta : rec.matchReason?.en}</span>
-                    </span>
-                  </div>
-
-                  <h4 className="font-extrabold text-slate-900 text-xs line-clamp-2">
-                    {isTa ? rec.scheme.name?.ta : rec.scheme.name?.en}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 truncate mt-1">
-                    {isTa ? rec.scheme.department?.ta : rec.scheme.department?.en}
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-emerald-700 truncate max-w-[60%]">
-                    {isTa ? rec.scheme.benefitSummary?.ta : rec.scheme.benefitSummary?.en}
-                  </span>
-                  <button
-                    onClick={() => navigate(`/schemes/${rec.scheme._id}`)}
-                    className="text-xs font-extrabold text-blue-900 hover:text-blue-700 flex items-center space-x-1"
-                  >
-                    <span>View</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={() => handleSelectDomain('')}
+            className="text-xs font-bold text-blue-700 hover:text-blue-900 px-3 py-1.5 rounded-lg bg-white border border-blue-200 self-start sm:self-auto shrink-0"
+          >
+            {isTa ? 'அனைத்தையும் காட்டுக' : 'Show All Sectors'}
+          </button>
         </div>
       )}
 
-      {/* 4. Browse By Welfare Area (Interactive Domain Grid) */}
-      {!selectedDomain && (
-        <div className="space-y-4">
+      {/* Browse by Welfare Area Grid (When no specific sector is active) */}
+      {!selectedDomain && !search && (
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center space-x-2">
-              <Layers className="w-5 h-5 text-blue-900" />
-              <span>{isTa ? 'நலத் துறைகள் வாரியாக உலாவுங்கள்' : 'Browse by Welfare Area'}</span>
-            </h2>
-            <span className="text-xs text-slate-500 font-extrabold">
-              {domains.length} {isTa ? 'துறைகள்' : 'Domains'}
+            <h3 className="text-xs font-extrabold text-[#172B4D] uppercase tracking-wider flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-blue-700" />
+              <span>{isTa ? 'துறை வாரியாக உலாவுங்கள்' : 'Browse by Welfare Sector'}</span>
+            </h3>
+            <span className="text-[11px] font-bold text-slate-500">
+              {domains.length} {isTa ? 'துறைகள்' : 'State Sectors'}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {domains.map((dom) => {
               const IconCmp = iconComponents[dom.iconName] || Award;
               return (
                 <div
                   key={dom._id}
                   onClick={() => handleSelectDomain(dom.domainKey)}
-                  className="glass-card p-4 rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-3 bg-white hover:bg-blue-50/20"
+                  className="gov-card p-4 rounded-xl cursor-pointer hover:border-blue-400 hover:-translate-y-0.5 transition-all group flex flex-col justify-between space-y-2 bg-white"
                 >
                   <div className="space-y-2">
-                    <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-900 group-hover:scale-110 transition-transform">
-                      <IconCmp className="w-5 h-5" />
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-900 group-hover:scale-105 transition-transform">
+                      <IconCmp className="w-4 h-4" />
                     </div>
 
-                    <h3 className="font-extrabold text-slate-900 text-xs group-hover:text-blue-900 transition-colors line-clamp-1">
+                    <h4 className="font-bold text-[#172B4D] text-xs group-hover:text-blue-700 transition-colors line-clamp-1">
                       {isTa ? dom.name?.ta : dom.name?.en}
-                    </h3>
+                    </h4>
 
                     <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
                       {isTa ? dom.description?.ta : dom.description?.en}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
-                    <span className="font-black text-blue-950 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">
+                    <span className="font-extrabold text-[#10243A] bg-slate-100 px-2 py-0.5 rounded">
                       {dom.schemeCount || 0} {isTa ? 'திட்டங்கள்' : 'Schemes'}
                     </span>
-                    <span className="font-extrabold text-blue-900 flex items-center space-x-0.5 group-hover:translate-x-1 transition-transform">
+                    <span className="font-bold text-blue-700 flex items-center group-hover:translate-x-0.5 transition-transform">
                       <span>Explore</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-3 h-3 ml-0.5" />
                     </span>
                   </div>
                 </div>
@@ -282,91 +342,46 @@ export const SchemeDiscoveryPage: React.FC = () => {
         </div>
       )}
 
-      {/* 5. Active Domain Header Bar if selected */}
-      {selectedDomain && activeDomainObj && (
-        <div className="glass-card p-6 rounded-3xl border border-blue-200 bg-blue-50/40 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-900 text-white flex items-center justify-center font-bold">
-                {React.createElement(iconComponents[activeDomainObj.iconName] || Award, { className: 'w-5 h-5' })}
-              </div>
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  {isTa ? activeDomainObj.name?.ta : activeDomainObj.name?.en}
-                </h2>
-                <p className="text-xs text-slate-600">
-                  {isTa ? activeDomainObj.description?.ta : activeDomainObj.description?.en}
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleSelectDomain('')}
-              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all flex items-center space-x-1"
-            >
-              <X className="w-4 h-4" />
-              <span>{isTa ? 'அனைத்து துறைகளும்' : 'All Welfare Areas'}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 6. Filter Pills Bar */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-2 border-b border-slate-200">
-        <button
-          onClick={() => handleSelectDomain('')}
-          className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-            !selectedDomain ? 'bg-blue-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          {isTa ? 'அனைத்து துறைகளும்' : 'All Domains'}
-        </button>
-        {domains.map((dom) => (
-          <button
-            key={dom._id}
-            onClick={() => handleSelectDomain(dom.domainKey)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-              selectedDomain === dom.domainKey ? 'bg-blue-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            {isTa ? dom.name?.ta : dom.name?.en} ({dom.schemeCount || 0})
-          </button>
-        ))}
-      </div>
-
-      {/* 7. Schemes Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-extrabold text-slate-900">
-            {selectedDomain
-              ? (isTa ? `நலத்திட்டங்கள் (${schemes.length})` : `Schemes in Category (${schemes.length})`)
-              : (isTa ? `கிடைக்கும் நலத்திட்டங்கள் பட்டியல் (${schemes.length})` : `Available Welfare Schemes (${schemes.length})`)}
-          </h3>
+      {/* Schemes Grid */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-xs font-bold text-slate-600 px-1">
+          <span>
+            {displayedSchemes.length} {isTa ? 'திட்டங்கள் பட்டியலிடப்பட்டுள்ளன' : 'welfare schemes available'}
+          </span>
+          {selectedDepartment !== 'ALL' && (
+            <span className="text-[11px] text-blue-700">
+              Filtering by: {selectedDepartment}
+            </span>
+          )}
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-400 text-xs">
-            {isTa ? 'நலத்திட்டங்கள் பெறப்படுகின்றன...' : 'Loading verified schemes...'}
-          </div>
-        ) : schemes.length === 0 ? (
-          <div className="glass-card text-center py-16 px-4 rounded-3xl border border-slate-200">
-            <Award className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-700">
-              {isTa ? 'திட்டங்கள் எதுவும் கிடைக்கவில்லை' : 'No schemes found in this category.'}
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              {isTa ? 'தேடல் அல்லது துறை தேர்வை மாற்றி முயலவும்.' : 'Try adjusting your search query or choosing another welfare domain.'}
+          <div className="py-20 text-center space-y-3">
+            <div className="w-10 h-10 border-3 border-[#10243A] border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+            <p className="text-xs font-bold text-slate-500">
+              {isTa ? 'திட்டங்கள் பெறப்படுகின்றன...' : 'Loading verified government schemes...'}
             </p>
           </div>
+        ) : displayedSchemes.length === 0 ? (
+          <EmptyState
+            icon={Compass}
+            title={isTa ? 'திட்டங்கள் எதுவும் கிடைக்கவில்லை' : 'No Schemes Found'}
+            description={
+              isTa
+                ? 'உங்கள் தேடல் அளவுகோலுக்கு ஏற்ப திட்டங்கள் எதுவும் இல்லை. வடிகட்டிகளை மாற்றி மீண்டும் முயற்சிக்கவும்.'
+                : 'No welfare schemes matched your search query or department filter. Try resetting your search parameters.'
+            }
+            actionText={isTa ? 'வடிகட்டிகளை மீட்டமைக்க' : 'Clear All Filters'}
+            onAction={handleClearFilters}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {schemes.map((scheme) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {displayedSchemes.map((scheme) => (
               <SchemeCard key={scheme._id} scheme={scheme} />
             ))}
           </div>
         )}
       </div>
-
     </div>
   );
 };

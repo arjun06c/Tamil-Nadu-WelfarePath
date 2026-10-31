@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
   getAllApplications,
+  getOfficerDashboardStats,
+  saveOfficerVerification,
   getApplicationDetailsForOfficer,
   updateApplicationStatus,
   updateDocumentVerificationStatus,
@@ -26,9 +28,11 @@ const router = Router();
 router.use(authenticateJWT);
 router.use(authorizeRoles(UserRole.OFFICER, UserRole.ADMIN));
 
+router.get('/officer-stats', getOfficerDashboardStats);
 router.get('/applications', getAllApplications);
 router.get('/applications/:id', getApplicationDetailsForOfficer);
 router.put('/applications/:id/status', updateApplicationStatus);
+router.put('/applications/:id/verification', saveOfficerVerification);
 router.put('/applications/:id/documents/:docId', updateDocumentVerificationStatus);
 router.get('/duplicate-flags', getDuplicateFlags);
 router.put('/duplicate-flags/:id', updateDuplicateFlagStatus);

@@ -16,7 +16,7 @@ export const FullAssistantPage: React.FC = () => {
         ? 'வணக்கம்! நான் உங்கள் தமிழ்நாடு நலன்பாதை உதவியாளன். உங்களுக்குத் தேவையான அரசு நலத்திட்டங்கள், தகுதி நிபந்தனைகள் மற்றும் விண்ணப்ப நிலை பற்றி என்னிடம் கேட்கலாம்!'
         : 'Hello! I am your WelfarePath Assistant. You can ask me about eligible schemes, missing document gaps, or application status history!',
       actionButtons: [
-        { label: isTa ? 'என் தகுதியைச் சோதிக்க' : 'Check Eligibility', path: '/citizen/portfolio' },
+        { label: isTa ? 'என் தகுதியைச் சோதிக்க' : 'Check Eligibility', path: '/citizen/eligible-schemes' },
         { label: isTa ? 'திட்டங்களைக் காண்க' : 'Explore Schemes', path: '/citizen/schemes' }
       ]
     }

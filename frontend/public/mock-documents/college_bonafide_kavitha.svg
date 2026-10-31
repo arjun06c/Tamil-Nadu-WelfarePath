@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1130" width="800" height="1130">
+  <defs>
+    <style>
+      .college-title { font-family: 'Times New Roman', serif; font-weight: bold; fill: #1e1b4b; text-anchor: middle; }
+      .label { font-family: 'Arial', sans-serif; font-size: 13px; fill: #475569; font-weight: bold; }
+      .val { font-family: 'Arial', sans-serif; font-size: 14px; fill: #0f172a; font-weight: bold; }
+      .watermark { font-family: 'Arial', sans-serif; font-size: 26px; font-weight: 900; fill: rgba(220, 38, 38, 0.13); text-anchor: middle; letter-spacing: 4px; }
+      .body-txt { font-family: 'Georgia', serif; font-size: 15px; fill: #1e293b; line-height: 1.8; }
+    </style>
+  </defs>
+
+  <rect width="800" height="1130" fill="#fdfcf8"/>
+  <rect x="25" y="25" width="750" height="1080" fill="none" stroke="#312e81" stroke-width="3"/>
+  <rect x="32" y="32" width="736" height="1066" fill="none" stroke="#4f46e5" stroke-width="1.2"/>
+  <rect x="36" y="36" width="728" height="1058" fill="none" stroke="#312e81" stroke-width="0.6"/>
+
+  <!-- Watermark -->
+  <g transform="translate(400, 560) rotate(-40)">
+    <text y="-180" class="watermark">★ MOCK CITIZEN DOCUMENT ★</text>
+    <text y="-140" class="watermark">PROTOTYPE DEMONSTRATION ONLY</text>
+    <text y="0" class="watermark" font-size="34" fill="rgba(220, 38, 38, 0.16)">NOT VALID FOR OFFICIAL USE</text>
+    <text y="140" class="watermark">TN WELFAREPATH VERIFICATION WORKSPACE</text>
+    <text y="180" class="watermark">★ FOR AUDIT SIMULATION ONLY ★</text>
+  </g>
+
+  <!-- College Crest Header -->
+  <g transform="translate(400, 80)">
+    <circle cx="0" cy="0" r="34" fill="#eef2ff" stroke="#312e81" stroke-width="2"/>
+    <path d="M -16 6 L 0 -14 L 16 6 L 0 16 Z" fill="#4338ca"/>
+    <circle cx="0" cy="2" r="5" fill="#fbbf24"/>
+    <text y="24" font-family="'Times New Roman', serif" font-size="7" font-weight="bold" fill="#312e81" text-anchor="middle">ESTD 1965</text>
+  </g>
+
+  <text x="400" y="140" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#4338ca" text-anchor="middle" letter-spacing="1">GOVERNMENT OF TAMIL NADU • HIGHER EDUCATION DEPARTMENT</text>
+  <text x="400" y="166" class="college-title" font-size="20">MEENAKSHI GOVERNMENT ARTS COLLEGE FOR WOMEN</text>
+  <text x="400" y="188" font-family="'Times New Roman', serif" font-size="16" font-style="italic" fill="#4338ca" text-anchor="middle">(AUTONOMOUS) • RE-ACCREDITED WITH 'A' GRADE BY NAAC</text>
+  <text x="400" y="208" font-family="'Arial', sans-serif" font-size="12" fill="#475569" text-anchor="middle">GORIPALAYAM, MADURAI, TAMIL NADU – 625 002</text>
+
+  <line x1="80" y1="222" x2="720" y2="222" stroke="#312e81" stroke-width="1.5"/>
+  <rect x="220" y="232" width="360" height="34" rx="6" fill="#312e81"/>
+  <text x="400" y="254" font-family="'Arial', sans-serif" font-size="14" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">
+    BONAFIDE COLLEGE STUDY CERTIFICATE
+  </text>
+  <line x1="80" y1="276" x2="720" y2="276" stroke="#312e81" stroke-width="1.5"/>
+
+  <!-- Metadata -->
+  <g transform="translate(80, 295)">
+    <rect width="640" height="48" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="18" y="20" class="label">Certificate Ref No:</text>
+    <text x="18" y="38" font-family="'Courier New', monospace" font-size="13" font-weight="bold" fill="#312e81">MGAC-STUDY-2024-0814</text>
+
+    <text x="320" y="20" class="label">Admission Register No:</text>
+    <text x="320" y="38" class="val">24UBA042</text>
+
+    <text x="520" y="20" class="label">Issue Date:</text>
+    <text x="520" y="38" class="val">14-Jul-2024</text>
+  </g>
+
+  <!-- Certification Statement -->
+  <g transform="translate(80, 375)">
+    <text x="0" y="0" class="body-txt">
+      <tspan x="0" dy="0">This is to certify that Selvi <tspan font-weight="bold">KAVITHA R</tspan>, daughter of Thiru <tspan font-weight="bold">RAMASAMY M</tspan>,</tspan>
+      <tspan x="0" dy="28">is a bonafide student of this autonomous collegiate institution during the Academic Year 2024-2025.</tspan>
+      <tspan x="0" dy="28">The detailed particulars of her course and admission are furnished below:</tspan>
+    </text>
+  </g>
+
+  <!-- Table -->
+  <g transform="translate(80, 470)">
+    <rect width="640" height="230" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+    
+    <rect x="0" y="0" width="220" height="38" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5"/>
+    <rect x="220" y="0" width="420" height="38" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.5"/>
+    <text x="16" y="24" class="label">Student Name:</text>
+    <text x="236" y="24" class="val">KAVITHA R (கவிதா ரா)</text>
+
+    <rect x="0" y="38" width="220" height="38" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5"/>
+    <rect x="220" y="38" width="420" height="38" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.5"/>
+    <text x="16" y="62" class="label">Degree Programme:</text>
+    <text x="236" y="62" class="val">Bachelor of Arts (B.A.)</text>
+
+    <rect x="0" y="76" width="220" height="38" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5"/>
+    <rect x="220" y="76" width="420" height="38" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.5"/>
+    <text x="16" y="100" class="label">Major / Branch:</text>
+    <text x="236" y="100" class="val">Tamil Literature (தமிழ் இலக்கியம்)</text>
+
+    <rect x="0" y="114" width="220" height="38" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5"/>
+    <rect x="220" y="114" width="420" height="38" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.5"/>
+    <text x="16" y="138" class="label">Academic Year &amp; Semester:</text>
+    <text x="236" y="138" class="val">First Year • Semester I &amp; II (2024-2025)</text>
+
+    <rect x="0" y="152" width="220" height="38" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5"/>
+    <rect x="220" y="152" width="420" height="38" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.5"/>
+    <text x="16" y="176" class="label">Study Status:</text>
+    <text x="236" y="176" class="val" fill="#047857">Regular Full-Time On-Campus Student</text>
+
+    <rect x="0" y="190" width="220" height="40" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5"/>
+    <rect x="220" y="190" width="420" height="40" fill="#eff6ff" stroke="#e2e8f0" stroke-width="0.5"/>
+    <text x="16" y="214" class="label">Pudhumai Penn Eligibility:</text>
+    <text x="236" y="214" class="val" fill="#1e3a8a">Eligible for Moovalur Ramamirtham Ammaiyar Scheme</text>
+  </g>
+
+  <!-- Signatures -->
+  <g transform="translate(80, 730)">
+    <rect width="640" height="80" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="16" y="24" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#334155">CERTIFICATE PURPOSE &amp; CONDITIONS:</text>
+    <text x="16" y="44" font-family="'Arial', sans-serif" font-size="11" fill="#475569">
+      Issued upon the student's request for verification and disbursement of Tamil Nadu Government higher education stipend.
+    </text>
+    <text x="16" y="62" font-family="'Arial', sans-serif" font-size="11" fill="#475569">
+      The student has maintained satisfactory attendance (>85%) and good moral conduct.
+    </text>
+  </g>
+
+  <g transform="translate(80, 840)">
+    <!-- College Seal -->
+    <g transform="translate(180, 50)">
+      <circle cx="0" cy="0" r="44" fill="none" stroke="#312e81" stroke-width="2" stroke-dasharray="3,2"/>
+      <circle cx="0" cy="0" r="40" fill="none" stroke="#312e81" stroke-width="1"/>
+      <text y="-20" font-family="'Times New Roman', serif" font-size="8" font-weight="bold" fill="#312e81" text-anchor="middle">MEENAKSHI GOVT ARTS</text>
+      <text y="2" font-family="'Times New Roman', serif" font-size="9" font-weight="bold" fill="#312e81" text-anchor="middle">MADURAI - 2</text>
+      <text y="18" font-family="'Arial', sans-serif" font-size="8" fill="#4338ca" text-anchor="middle">COLLEGE SEAL</text>
+    </g>
+
+    <!-- Principal Sign -->
+    <g transform="translate(420, 20)">
+      <line x1="0" y1="50" x2="200" y2="50" stroke="#0f172a" stroke-width="1"/>
+      <text x="100" y="68" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#0f172a" text-anchor="middle">PRINCIPAL / முதல்வர்</text>
+      <text x="100" y="84" font-family="'Arial', sans-serif" font-size="11" fill="#475569" text-anchor="middle">Meenakshi Govt Arts College for Women</text>
+      <text x="100" y="98" font-family="'Arial', sans-serif" font-size="10" fill="#64748b" text-anchor="middle">Madurai - 625002</text>
+    </g>
+  </g>
+
+  <!-- Disclaimer Footer -->
+  <g transform="translate(80, 1010)">
+    <rect width="640" height="50" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1.2"/>
+    <text x="320" y="20" font-family="'Arial', sans-serif" font-size="11" font-weight="900" fill="#991b1b" text-anchor="middle">
+      PROTOTYPE MOCK DOCUMENT — FOR TN WELFAREPATH SYSTEM TESTING ONLY
+    </text>
+    <text x="320" y="38" font-family="'Arial', sans-serif" font-size="9.5" font-weight="bold" fill="#b91c1c" text-anchor="middle">
+      Not an authentic Government of Tamil Nadu certificate. Generated strictly for verification workspace demonstration.
+    </text>
+  </g>
+</svg>

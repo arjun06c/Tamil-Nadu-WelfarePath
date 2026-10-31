@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Award, FileText, ArrowRight, CheckCircle2, AlertTriangle, XCircle, ExternalLink } from 'lucide-react';
+import { Award, FileText, ArrowRight, CheckCircle2, AlertTriangle, XCircle, Landmark, ExternalLink } from 'lucide-react';
+import { StatusBadge } from './common/StatusBadge';
 
 interface SchemeCardProps {
   scheme: any;
-  status?: 'ELIGIBLE' | 'NEAR_ELIGIBLE' | 'NOT_ELIGIBLE';
+  status?: 'ELIGIBLE' | 'NEAR_ELIGIBLE' | 'NOT_ELIGIBLE' | 'STRONG_MATCH' | 'POTENTIAL_MATCH';
   missingDocsCount?: number;
   gapRemarks?: { en: string; ta: string };
 }
@@ -19,97 +20,104 @@ export const SchemeCard: React.FC<SchemeCardProps> = ({
   const { lang } = useAuth();
   const isTa = lang === 'ta';
 
-  const name = isTa ? scheme.name?.ta : scheme.name?.en;
-  const department = isTa ? scheme.department?.ta : scheme.department?.en;
-  const description = isTa ? scheme.description?.ta : scheme.description?.en;
-  const benefit = isTa ? scheme.benefitSummary?.ta : scheme.benefitSummary?.en;
+  const name = isTa ? scheme.name?.ta || scheme.name?.en : scheme.name?.en;
+  const department = isTa ? scheme.department?.ta || scheme.department?.en : scheme.department?.en;
+  const description = isTa ? scheme.description?.ta || scheme.description?.en : scheme.description?.en;
+  const benefit = isTa ? scheme.benefitSummary?.ta || scheme.benefitSummary?.en : scheme.benefitSummary?.en;
+  const domain = scheme.domainKey ? scheme.domainKey.replace(/_/g, ' ') : '';
 
   return (
-    <div className="glass-card rounded-2xl p-6 flex flex-col justify-between card-hover-effect relative overflow-hidden group">
+    <div className="gov-card p-6 flex flex-col justify-between relative group hover:border-slate-300 transition-all duration-200">
       
-      {/* Top Banner Tag */}
+      {/* Top Header Tags */}
       <div>
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-center space-x-1">
-            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide uppercase bg-blue-50 text-blue-900 border border-blue-200">
+        <div className="flex items-start justify-between gap-2.5 mb-3">
+          <div className="flex items-center flex-wrap gap-1.5">
+            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-slate-100 text-[#10243A] border border-slate-200 tracking-wider">
               {scheme.schemeCode}
             </span>
+            {domain && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-blue-50 text-blue-800 border border-blue-200">
+                {domain}
+              </span>
+            )}
           </div>
 
-          {/* Eligibility Badge if present */}
-          {status === 'ELIGIBLE' && (
-            <span className="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold badge-eligible">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{isTa ? 'முழு தகுதி' : 'ELIGIBLE'}</span>
-            </span>
-          )}
-
-          {status === 'NEAR_ELIGIBLE' && (
-            <span className="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold badge-near-eligible">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>{isTa ? 'தகுதி பெறலாம்' : 'NEAR ELIGIBLE'}</span>
-            </span>
-          )}
-
-          {status === 'NOT_ELIGIBLE' && (
-            <span className="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold badge-not-eligible">
-              <XCircle className="w-3.5 h-3.5" />
-              <span>{isTa ? 'தகுதியற்றது' : 'NOT ELIGIBLE'}</span>
-            </span>
+          {status && (
+            <StatusBadge status={status} isTamil={isTa} size="sm" />
           )}
         </div>
 
         {/* Scheme Title */}
-        <h3 className="text-base font-bold text-slate-900 mb-1 line-clamp-2 group-hover:text-blue-900 transition-colors">
-          {name}
+        <h3 className="text-[15px] font-bold text-[#172B4D] mb-1.5 line-clamp-2 leading-snug group-hover:text-blue-700 transition-colors">
+          <Link to={`/schemes/${scheme._id}`}>{name}</Link>
         </h3>
 
         {/* Department Name */}
-        <p className="text-xs text-slate-500 font-medium mb-3 flex items-center space-x-1">
-          <Award className="w-3.5 h-3.5 text-teal-600 inline shrink-0" />
-          <span className="truncate">{department}</span>
-        </p>
+        {department && (
+          <p className="text-xs text-slate-500 font-medium mb-3 flex items-center space-x-1.5">
+            <Landmark className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+            <span className="truncate">{department}</span>
+          </p>
+        )}
 
-        {/* Short Description */}
-        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4">
-          {description}
-        </p>
+        {/* Description */}
+        {description && (
+          <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4">
+            {description}
+          </p>
+        )}
       </div>
 
-      {/* Bottom Info Section */}
+      {/* Financial Benefit & Criteria Highlights */}
       <div>
-        {/* Benefit Box */}
-        <div className="bg-slate-50 rounded-xl p-3 mb-4 border border-slate-200/60">
-          <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-0.5">
-            {isTa ? 'அரசு உதவி தொகை' : 'Benefit Grant'}
-          </div>
-          <div className="text-xs font-bold text-emerald-700 truncate">
-            {benefit}
-          </div>
-        </div>
-
-        {/* Gap Alert if Near Eligible */}
-        {status === 'NEAR_ELIGIBLE' && gapRemarks && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 mb-4 text-[11px] text-amber-900">
-            <span className="font-bold block">{isTa ? 'தேவைப்படும் ஆவணம்:' : 'Gap Action Needed:'}</span>
-            <span className="line-clamp-2">{isTa ? gapRemarks.ta : gapRemarks.en}</span>
+        {benefit && (
+          <div className="bg-slate-50/80 rounded-xl p-3 mb-3.5 border border-slate-200/80">
+            <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">
+              {isTa ? 'அரசு உதவித்தொகை / பயன்' : 'Official Financial Benefit'}
+            </div>
+            <div className="text-xs font-extrabold text-emerald-800 line-clamp-1">
+              {benefit}
+            </div>
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-          <div className="flex items-center space-x-1 text-xs text-slate-500">
+        {/* Gap Remarks / Notice if any */}
+        {gapRemarks && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 mb-3.5 text-[11px] text-amber-900 flex items-start space-x-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block">{isTa ? 'தேவைப்படும் நடவடிக்கை:' : 'Action Required:'}</span>
+              <span className="line-clamp-2">{isTa ? gapRemarks.ta : gapRemarks.en}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Card Footer: Metadata & Actions */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+          <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
             <FileText className="w-3.5 h-3.5 text-slate-400" />
-            <span>{scheme.requiredDocuments?.length || 0} {isTa ? 'ஆவணங்கள்' : 'Required Docs'}</span>
+            <span>
+              {scheme.requiredDocuments?.length || 0} {isTa ? 'ஆவணங்கள்' : 'Docs Required'}
+            </span>
           </div>
 
-          <Link
-            to={`/schemes/${scheme._id}`}
-            className="flex items-center space-x-1 text-xs font-bold text-blue-900 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            <span>{isTa ? 'தகுதியை பார்க்க' : 'View Details'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center space-x-2">
+            <Link
+              to={`/schemes/${scheme._id}`}
+              className="text-xs font-bold text-slate-700 hover:text-blue-900 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              {isTa ? 'விவரம்' : 'Details'}
+            </Link>
+
+            <Link
+              to={`/citizen/apply/${scheme._id}`}
+              className="flex items-center space-x-1 text-xs font-bold text-white bg-[#10243A] hover:bg-[#193352] px-3.5 py-1.5 rounded-lg transition-all shadow-sm active:scale-95"
+            >
+              <span>{isTa ? 'விண்ணப்பிக்க' : 'Apply Now'}</span>
+              <ArrowRight className="w-3 h-3 ml-0.5" />
+            </Link>
+          </div>
         </div>
       </div>
 

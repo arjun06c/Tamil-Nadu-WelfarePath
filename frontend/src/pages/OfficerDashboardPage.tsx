@@ -1,417 +1,395 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { PageHeader } from '../components/common/PageHeader';
+import { StatusBadge } from '../components/common/StatusBadge';
 import {
   Shield,
+  FilePlus,
+  Clock,
+  Search,
   CheckCircle2,
   XCircle,
   AlertTriangle,
   FileText,
-  Search,
   UserCheck,
-  Scan,
-  Check,
   Eye,
-  Building2,
-  Clock,
-  Award,
+  RefreshCw,
+  Sparkles,
+  ArrowRight,
+  MapPin,
+  Calendar,
   Layers,
-  ArrowRight
+  ChevronRight,
+  Bell,
+  Building,
+  Filter
 } from 'lucide-react';
 
-export const OfficerDashboardPage: React.FC = () => {
-  const [applications, setApplications] = useState<any[]>([]);
-  const [duplicateFlags, setDuplicateFlags] = useState<any[]>([]);
-  const [selectedApp, setSelectedApp] = useState<any>(null);
-  const [selectedAppDocs, setSelectedAppDocs] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'summary' | 'form' | 'docs' | 'integrity'>('summary');
-  const [remarks, setRemarks] = useState('');
-  const [correctionReason, setCorrectionReason] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+interface OfficerStats {
+  newApplications: number;
+  pendingVerification: number;
+  underReview: number;
+  correctionRequired: number;
+  approved: number;
+  rejected: number;
+}
 
+export const OfficerDashboardPage: React.FC = () => {
   const { user, lang } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const isTa = lang === 'ta';
 
-  useEffect(() => {
-    fetchOfficerData();
-  }, [statusFilter]);
+  const [stats, setStats] = useState<OfficerStats>({
+    newApplications: 0,
+    pendingVerification: 0,
+    underReview: 0,
+    correctionRequired: 0,
+    approved: 0,
+    rejected: 0
+  });
 
-  const fetchOfficerData = async () => {
-    setLoading(true);
+  const [newApplications, setNewApplications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+
+  useEffect(() => {
+    fetchDashboardData();
+
+    // Auto-refresh interval every 30 seconds for real-time dashboard capability
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchDashboardData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    else setRefreshing(true);
+
     try {
-      const [appRes, flagRes] = await Promise.all([
-        api.get('/admin/applications', { params: { status: statusFilter } }),
-        api.get('/admin/duplicate-flags')
+      const [statsRes, newAppsRes] = await Promise.all([
+        api.get('/admin/officer-stats'),
+        api.get('/admin/applications', { params: { queue: 'new', sort: 'newest' } })
       ]);
-      setApplications(appRes.data.applications || []);
-      setDuplicateFlags(flagRes.data.flags || []);
+
+      if (statsRes.data?.stats) {
+        setStats(statsRes.data.stats);
+      }
+      setNewApplications(newAppsRes.data?.applications || []);
+      setLastRefreshed(new Date());
     } catch (err) {
-      console.error(err);
+      console.error('Fetch officer dashboard data error:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleSelectApp = async (app: any) => {
-    setSelectedApp(app);
-    setSelectedAppDocs([]);
-    setActiveTab('summary');
-    setActionError(null);
-    try {
-      const res = await api.get(`/admin/applications/${app._id}`);
-      if (res.data.documents) {
-        setSelectedAppDocs(res.data.documents);
-      }
-    } catch (err) {
-      console.error('Failed to fetch application documents:', err);
-    }
+  const isRecentApplication = (submittedAt: string | Date) => {
+    if (!submittedAt) return false;
+    const diffHours = (Date.now() - new Date(submittedAt).getTime()) / (1000 * 60 * 60);
+    return diffHours <= 48; // Within 48 hours
   };
 
-  const handleUpdateStatus = async (appId: string, newStatus: string) => {
-    setSubmitting(true);
-    setActionError(null);
-    try {
-      await api.put(`/admin/applications/${appId}/status`, {
-        status: newStatus,
-        remarks: remarks || correctionReason || `Status set to ${newStatus} by District Officer`
-      });
-      setRemarks('');
-      setCorrectionReason('');
-      setSelectedApp(null);
-      setSelectedAppDocs([]);
-      fetchOfficerData();
-    } catch (err: any) {
-      console.error('Update status error:', err);
-      const errorMsg = err.response?.data?.message || 'Error updating application status. Please try again.';
-      setActionError(errorMsg);
-      alert(errorMsg);
-    } finally {
-      setSubmitting(false);
+  const cards = [
+    {
+      title: isTa ? 'புதிய விண்ணப்பங்கள்' : 'New Applications',
+      count: stats.newApplications,
+      icon: FilePlus,
+      color: 'bg-blue-50 text-blue-800 border-blue-200',
+      badgeColor: 'bg-blue-600 text-white',
+      desc: isTa ? 'உடனடி ஆய்வு தேவை' : 'Fresh submissions awaiting initial check',
+      queue: 'new',
+      status: 'SUBMITTED'
+    },
+    {
+      title: isTa ? 'சரிபார்ப்பு நிலுவை' : 'Pending Verification',
+      count: stats.pendingVerification,
+      icon: Clock,
+      color: 'bg-amber-50 text-amber-800 border-amber-200',
+      badgeColor: 'bg-amber-600 text-white',
+      desc: isTa ? 'ஆவணங்கள் ஆய்வு செய்யப்பட வேண்டும்' : 'Awaiting officer document audit',
+      queue: 'pending',
+      status: ''
+    },
+    {
+      title: isTa ? 'பரிசீலனையில் உள்ளவை' : 'Under Review',
+      count: stats.underReview,
+      icon: Search,
+      color: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+      badgeColor: 'bg-indigo-600 text-white',
+      desc: isTa ? 'அதிகாரி ஆய்வில் உள்ளது' : 'Active case eligibility evaluation',
+      queue: 'under_review',
+      status: 'UNDER_REVIEW'
+    },
+    {
+      title: isTa ? 'திருத்தம் கோரப்பட்டவை' : 'Correction Required',
+      count: stats.correctionRequired,
+      icon: AlertTriangle,
+      color: 'bg-orange-50 text-orange-800 border-orange-200',
+      badgeColor: 'bg-orange-600 text-white',
+      desc: isTa ? 'பயனாளி ஆவண திருத்தம் தேவை' : 'Sent back to citizens for corrections',
+      queue: 'corrections',
+      status: 'CORRECTION_REQUIRED'
+    },
+    {
+      title: isTa ? 'ஒப்புதல் பெற்றவை' : 'Approved Applications',
+      count: stats.approved,
+      icon: CheckCircle2,
+      color: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+      badgeColor: 'bg-emerald-600 text-white',
+      desc: isTa ? 'பயன் ஆணை வழங்கப்பட்டது' : 'Sanctioned benefits successfully processed',
+      queue: 'completed',
+      status: 'APPROVED'
+    },
+    {
+      title: isTa ? 'நிராகரிக்கப்பட்டவை' : 'Rejected Applications',
+      count: stats.rejected,
+      icon: XCircle,
+      color: 'bg-rose-50 text-rose-800 border-rose-200',
+      badgeColor: 'bg-rose-600 text-white',
+      desc: isTa ? 'தகுதி பெறாத விண்ணப்பங்கள்' : 'Ineligible or non-compliant case decisions',
+      queue: 'completed',
+      status: 'REJECTED'
     }
-  };
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2 text-xs font-bold text-purple-900 bg-purple-50 border border-purple-200 px-3 py-1 rounded-full w-fit mb-1">
-            <Shield className="w-4 h-4 text-purple-700" />
-            <span>{isTa ? 'மாவட்ட நலத்துறை அதிகாரி பக்கம்' : 'District Welfare Officer Workbench'}</span>
+    <div className="space-y-8 pb-16 max-w-7xl mx-auto">
+      {/* Top Page Header */}
+      <PageHeader
+        title={isTa ? 'மாவட்ட நலத்துறை அதிகாரி பணித்தளம்' : 'District Welfare Officer Application Workbench'}
+        subtitle={
+          isTa
+            ? `${user?.district || 'தமிழ்நாடு'} மண்டல நலத்திட்ட விண்ணப்பங்களின் நிகழ்நேர பரிசீலனை மற்றும் ஒப்புதல் மையம்`
+            : `Real-time case queue, document verification, and statutory benefit sanction orders for ${user?.district || 'Tamil Nadu'}`
+        }
+        badge={`${user?.district || 'District'} Jurisdiction`}
+        badgeVariant="blue"
+        icon={Shield}
+        actions={
+          <div className="flex items-center space-x-3 text-xs">
+            <span className="text-slate-400 hidden sm:inline">
+              Last updated: {lastRefreshed.toLocaleTimeString()}
+            </span>
+            <button
+              onClick={() => fetchDashboardData(false)}
+              disabled={refreshing}
+              className="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold rounded-xl flex items-center space-x-1.5 transition-all shadow-2xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+              <span>{isTa ? 'புதுப்பி' : 'Refresh Data'}</span>
+            </button>
+            <Link
+              to="/officer/applications"
+              className="px-4 py-2 bg-[#10243A] hover:bg-[#1a385c] text-white font-bold rounded-xl flex items-center space-x-1.5 shadow-2xs transition-all"
+            >
+              <span>{isTa ? 'முழு பணிவரிசை' : 'All Queues'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {isTa ? 'விண்ணப்பங்களின் சரிபார்ப்பு வரிசை' : 'Application Audit & Integrity Verification Queue'}
-          </h1>
-        </div>
+        }
+      />
 
-        {/* Filter Pills */}
-        <div className="flex items-center space-x-2 text-xs">
-          <button
-            onClick={() => setStatusFilter('')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-colors ${
-              statusFilter === '' ? 'bg-purple-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            All Queue ({applications.length})
-          </button>
-          <button
-            onClick={() => setStatusFilter('SUBMITTED')}
-            className={`px-3.5 py-1.5 rounded-lg font-bold transition-colors ${
-              statusFilter === 'SUBMITTED' ? 'bg-purple-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            Pending Audit
-          </button>
-          <button
-            onClick={() => setStatusFilter('CORRECTION_REQUIRED')}
-            className={`px-3.5 py-1.5 rounded-lg font-bold transition-colors ${
-              statusFilter === 'CORRECTION_REQUIRED' ? 'bg-amber-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            Corrections
-          </button>
-          <button
-            onClick={() => setStatusFilter('APPROVED')}
-            className={`px-3.5 py-1.5 rounded-lg font-bold transition-colors ${
-              statusFilter === 'APPROVED' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            Approved
-          </button>
-        </div>
+      {/* 6 Statistics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {cards.map((c, i) => {
+          const Icon = c.icon;
+          return (
+            <div
+              key={i}
+              onClick={() => navigate(`/officer/applications?queue=${c.queue}${c.status ? `&status=${c.status}` : ''}`)}
+              className="gov-card p-5 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group flex flex-col justify-between"
+            >
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
+                    {c.title}
+                  </span>
+                  <div className="text-3xl font-extrabold text-[#172B4D] tracking-tight">
+                    {loading ? '...' : c.count}
+                  </div>
+                </div>
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${c.color} shadow-2xs`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
+                  {c.desc}
+                </span>
+                <span className="font-bold text-[#10243A] flex items-center space-x-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>View Queue</span>
+                  <ArrowRight className="w-3 h-3 text-blue-600" />
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Duplicate Integrity Warning Banner */}
-      {duplicateFlags.length > 0 && (
-        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start space-x-3 text-xs text-amber-950">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <h4 className="font-bold text-amber-950 mb-1">
-              {isTa ? `எச்சரிக்கை: ${duplicateFlags.length} போலி/ஒரே நபர் விண்ணப்பக் கொடிகள் கண்டறியப்பட்டுள்ளன.` : `Integrity Alert: ${duplicateFlags.length} Deterministic Duplicate Flags Detected.`}
-            </h4>
-            <p className="text-[11px] leading-relaxed text-amber-900">
-              Deterministic checks matched identical Aadhaar hashes, bank account hashes, or high demographic similarity across applications. Inspect closely before granting approval.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Applications Queue Table */}
-      <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-              <tr>
-                <th className="py-3.5 px-4">App Ref No</th>
-                <th className="py-3.5 px-4">Citizen Name</th>
-                <th className="py-3.5 px-4">District</th>
-                <th className="py-3.5 px-4">Welfare Scheme</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Submitted Date</th>
-                <th className="py-3.5 px-4 text-right">Audit Case</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {applications.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-400 italic text-xs">
-                    No applications matching status filter.
-                  </td>
-                </tr>
-              ) : (
-                applications.map((app) => (
-                  <tr key={app._id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-blue-900 font-mono">
-                      {app.applicationReference || app.applicationNo}
-                    </td>
-                    <td className="py-3 px-4 text-slate-900 font-semibold">{app.citizenId?.name || 'Citizen User'}</td>
-                    <td className="py-3 px-4 text-slate-600">{app.citizenId?.district || 'District'}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">
-                      {isTa ? app.schemeId?.name?.ta : app.schemeId?.name?.en}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                          app.status === 'CORRECTION_REQUIRED'
-                            ? 'bg-amber-100 text-amber-900'
-                            : app.status === 'APPROVED'
-                            ? 'bg-emerald-100 text-emerald-900'
-                            : 'bg-blue-100 text-blue-900'
-                        }`}
-                      >
-                        {app.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-500">{new Date(app.createdAt).toLocaleDateString()}</td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleSelectApp(app)}
-                        className="px-3.5 py-1.5 bg-purple-900 hover:bg-purple-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-all inline-flex items-center space-x-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Audit Case</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Review Side Drawer / Modal Workbench */}
-      {selectedApp && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 animate-in fade-in zoom-in-95 duration-200">
-
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-mono font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    {selectedApp.applicationReference || selectedApp.applicationNo}
-                  </span>
-                  <span className="text-xs font-bold text-slate-500">• Status: {selectedApp.status}</span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900 mt-1">
-                  {isTa ? selectedApp.schemeId?.name?.ta : selectedApp.schemeId?.name?.en}
-                </h3>
-              </div>
-              <button onClick={() => setSelectedApp(null)} className="text-slate-400 hover:text-slate-600 text-sm font-bold">
-                ✕
-              </button>
+      {/* NEWLY RECEIVED APPLICATIONS SECTION */}
+      <div className="gov-card p-6 space-y-5 border-l-4 border-l-blue-600">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-900 border border-blue-200 flex items-center justify-center font-bold">
+              <Sparkles className="w-4 h-4 text-blue-600" />
             </div>
-
-            {/* Navigation Tabs */}
-            <div className="flex items-center space-x-2 border-b border-slate-100 pb-2 text-xs font-bold">
-              <button
-                onClick={() => setActiveTab('summary')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  activeTab === 'summary' ? 'bg-purple-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                1. Case Summary
-              </button>
-              <button
-                onClick={() => setActiveTab('form')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  activeTab === 'form' ? 'bg-purple-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                2. Application Form
-              </button>
-              <button
-                onClick={() => setActiveTab('docs')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  activeTab === 'docs' ? 'bg-purple-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                3. Documents & OCR ({selectedAppDocs.length})
-              </button>
-            </div>
-
-            {/* TAB 1: Case Summary */}
-            {activeTab === 'summary' && (
-              <div className="space-y-4 text-xs">
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-slate-400 block font-semibold">Citizen Name</span>
-                    <span className="font-bold text-slate-900">{selectedApp.citizenId?.name}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-semibold">Mobile</span>
-                    <span className="font-bold text-slate-900">{selectedApp.citizenId?.mobile}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-semibold">District</span>
-                    <span className="font-bold text-slate-900">{selectedApp.citizenId?.district}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-semibold">Annual Income</span>
-                    <span className="font-bold text-emerald-800">₹{selectedApp.citizenId?.annualIncome?.toLocaleString('en-IN') || '1,20,000'}</span>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200">
-                  <span className="font-bold text-blue-900 block mb-1">Verification Status Checklist:</span>
-                  <div className="space-y-1 text-[11px] text-blue-950">
-                    <div>✓ Tamil Nadu domicile address confirmed</div>
-                    <div>✓ Income certificate matches scheme ceiling</div>
-                    <div>✓ DBT bank account IFSC format validated</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 2: Form Data */}
-            {activeTab === 'form' && (
-              <div className="space-y-3 text-xs">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-[11px] max-h-64 overflow-y-auto">
-                  <pre>{JSON.stringify(selectedApp.formData || selectedApp.citizenId, null, 2)}</pre>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: Documents & OCR Scanner Results */}
-            {activeTab === 'docs' && (
-              <div className="space-y-3 text-xs">
-                <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between text-teal-900 font-bold">
-                  <span className="flex items-center space-x-2">
-                    <Scan className="w-4 h-4 text-teal-600" />
-                    <span>Automated Tesseract.js OCR Comparator</span>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-base font-extrabold text-[#172B4D]">
+                  {isTa ? 'புதிதாக பெறப்பட்ட விண்ணப்பங்கள்' : 'Newly Received Applications'}
+                </h2>
+                {newApplications.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-600 text-white animate-pulse">
+                    {newApplications.length} NEW
                   </span>
-                  <span>Confidence Level: 85%</span>
-                </div>
-
-                {selectedAppDocs.length > 0 ? (
-                  selectedAppDocs.map((doc: any) => (
-                    <div key={doc._id} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                      <div className="flex items-center justify-between font-bold text-slate-800">
-                        <span>{isTa ? doc.documentName?.ta || doc.docType : doc.documentName?.en || doc.docType}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                          doc.verificationStatus === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {doc.verificationStatus}
-                        </span>
-                      </div>
-                      <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-600 flex items-center justify-between">
-                        <span>SOURCE: {doc.source || 'MANUAL_UPLOAD'} | ISSUER: {doc.issuer || 'Govt of Tamil Nadu'}</span>
-                        <span className="text-emerald-700 font-bold">MATCH: PASS (88%)</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                    <div className="flex items-center justify-between font-bold text-slate-800">
-                      <span>AadhaarCard & Income Proof Documents</span>
-                      <span className="text-emerald-700">Citizen Confirmed</span>
-                    </div>
-                    <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[11px] text-slate-600">
-                      NAME MATCH: PASS | DISTRICT MATCH: CHENNAI | CONFIDENCE: 88%
-                    </div>
-                  </div>
                 )}
               </div>
-            )}
-
-            {/* Officer Action Toolbar */}
-            <div className="space-y-3 pt-3 border-t border-slate-200 text-xs">
-              {actionError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold flex items-center space-x-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                  <span>{actionError}</span>
-                </div>
-              )}
-
-              <div>
-                <label className="font-bold block text-slate-900 mb-1">Officer Audit Remarks / Reason:</label>
-                <textarea
-                  rows={2}
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Enter remarks for approval, rejection, or specific correction reason..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-900"
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-2 pt-2">
-                <button
-                  onClick={() => handleUpdateStatus(selectedApp._id, 'CORRECTION_REQUIRED')}
-                  disabled={submitting}
-                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all"
-                >
-                  {submitting ? 'Processing...' : 'Request Correction'}
-                </button>
-                <button
-                  onClick={() => handleUpdateStatus(selectedApp._id, 'REJECTED')}
-                  disabled={submitting}
-                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all"
-                >
-                  {submitting ? 'Processing...' : 'Reject'}
-                </button>
-                <button
-                  onClick={() => handleUpdateStatus(selectedApp._id, 'APPROVED')}
-                  disabled={submitting}
-                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-md flex items-center space-x-1.5 transition-all"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{submitting ? 'Approving...' : 'Approve & Release Benefit'}</span>
-                </button>
-              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isTa
+                  ? 'மனுதாரர்களிடமிருந்து சமர்ப்பிக்கப்பட்டு உங்கள் பரிசீலனைக்கு தயாராக உள்ள புதிய விண்ணப்பங்கள்'
+                  : 'Citizens applications submitted in your jurisdiction awaiting initial officer verification'}
+              </p>
             </div>
-
           </div>
+
+          <Link
+            to="/officer/applications?queue=new"
+            className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center space-x-1"
+          >
+            <span>{isTa ? 'அனைத்து புதிய மனுக்கள்' : 'View Full New Queue'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
-      )}
+
+        {/* Table of New Applications */}
+        {loading ? (
+          <div className="text-center py-12 text-slate-400 text-xs">Loading incoming applications...</div>
+        ) : newApplications.length === 0 ? (
+          <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 space-y-2">
+            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+            <p className="text-xs font-bold text-slate-700">All caught up! No incoming applications waiting for review.</p>
+            <p className="text-[11px] text-slate-400">Newly submitted applications from citizens will appear here immediately.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4">Application Ref</th>
+                  <th className="py-3 px-4">Citizen Name</th>
+                  <th className="py-3 px-4">District</th>
+                  <th className="py-3 px-4">Welfare Scheme</th>
+                  <th className="py-3 px-4">Submitted Date</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {newApplications.slice(0, 5).map((app) => {
+                  const isNew = isRecentApplication(app.submittedAt || app.createdAt);
+                  const schemeName = isTa ? app.schemeId?.name?.ta || app.schemeId?.name?.en : app.schemeId?.name?.en;
+
+                  return (
+                    <tr key={app._id} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#10243A]">
+                        <div className="flex items-center space-x-1.5">
+                          <span>{app.applicationReference || app.applicationNo}</span>
+                          {isNew && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-[#172B4D]">{app.citizenId?.name || app.formData?.applicantName || 'Citizen'}</div>
+                        <div className="text-[10px] text-slate-400">{app.citizenId?.mobile || app.formData?.mobile}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600">
+                        <span className="flex items-center space-x-1">
+                          <MapPin className="w-3 h-3 text-slate-400" />
+                          <span>{app.district || app.citizenId?.district || 'Madurai'}</span>
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-800 max-w-[220px] truncate">{schemeName}</div>
+                        <div className="text-[10px] text-slate-400">{app.schemeId?.department?.en || 'Welfare Dept'}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                        {new Date(app.submittedAt || app.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <StatusBadge status={app.status} />
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Link
+                          to={`/officer/applications/${app._id}`}
+                          className="px-3.5 py-1.5 bg-[#10243A] hover:bg-[#1a385c] text-white font-bold text-xs rounded-xl shadow-2xs transition-all inline-flex items-center space-x-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Case</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* QUICK WORKSPACE NAVIGATION TILES */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link
+          to="/officer/applications?queue=pending"
+          className="p-5 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 hover:shadow-xs transition-all flex items-center space-x-3.5"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-xs text-[#172B4D]">{isTa ? 'நிலுவை வரிசை' : 'Pending Verification Queue'}</h3>
+            <p className="text-[11px] text-slate-500">{stats.pendingVerification} cases waiting for document review</p>
+          </div>
+        </Link>
+
+        <Link
+          to="/officer/applications?queue=under_review"
+          className="p-5 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 hover:shadow-xs transition-all flex items-center space-x-3.5"
+        >
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+            <Search className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-xs text-[#172B4D]">{isTa ? 'நேரடி பரிசீலனை' : 'In-Progress Case Review'}</h3>
+            <p className="text-[11px] text-slate-500">{stats.underReview} applications currently being audited</p>
+          </div>
+        </Link>
+
+        <Link
+          to="/officer/applications?queue=corrections"
+          className="p-5 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 hover:shadow-xs transition-all flex items-center space-x-3.5"
+        >
+          <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-700">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-xs text-[#172B4D]">{isTa ? 'திருத்தம் கண்காணிப்பு' : 'Correction Tracking Queue'}</h3>
+            <p className="text-[11px] text-slate-500">{stats.correctionRequired} returned to citizens for corrections</p>
+          </div>
+        </Link>
+      </div>
 
     </div>
   );
 };
-

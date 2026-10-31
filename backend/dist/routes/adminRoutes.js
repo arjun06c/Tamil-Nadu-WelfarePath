@@ -9,9 +9,11 @@ const router = (0, express_1.Router)();
 // Protect all officer/admin routes
 router.use(authMiddleware_1.authenticateJWT);
 router.use((0, authMiddleware_1.authorizeRoles)(User_1.UserRole.OFFICER, User_1.UserRole.ADMIN));
+router.get('/officer-stats', adminController_1.getOfficerDashboardStats);
 router.get('/applications', adminController_1.getAllApplications);
 router.get('/applications/:id', adminController_1.getApplicationDetailsForOfficer);
 router.put('/applications/:id/status', adminController_1.updateApplicationStatus);
+router.put('/applications/:id/verification', adminController_1.saveOfficerVerification);
 router.put('/applications/:id/documents/:docId', adminController_1.updateDocumentVerificationStatus);
 router.get('/duplicate-flags', adminController_1.getDuplicateFlags);
 router.put('/duplicate-flags/:id', adminController_1.updateDuplicateFlagStatus);

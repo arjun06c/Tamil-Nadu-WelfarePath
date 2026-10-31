@@ -3,9 +3,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 export enum ApplicationStatus {
   DRAFT = 'DRAFT',
   SUBMITTED = 'SUBMITTED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
   DOC_VERIFICATION = 'DOC_VERIFICATION',
-  CORRECTION_REQUIRED = 'CORRECTION_REQUIRED',
   OFFICER_REVIEW = 'OFFICER_REVIEW',
+  CORRECTION_REQUIRED = 'CORRECTION_REQUIRED',
+  RESUBMITTED = 'RESUBMITTED',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   BENEFIT_RELEASED = 'BENEFIT_RELEASED',
@@ -27,6 +29,7 @@ export interface IApplication extends Document {
   applicationReference: string; // e.g. TNP-WP-2026-000124
   citizenId: mongoose.Types.ObjectId;
   schemeId: mongoose.Types.ObjectId;
+  district: string;
   applicationMethod: string;
   status: ApplicationStatus;
   currentStep: number;
@@ -36,6 +39,10 @@ export interface IApplication extends Document {
   officerRemarks?: string;
   correctionCount: number;
   assignedOfficerId?: mongoose.Types.ObjectId;
+  assignedAt?: Date;
+  verificationStartedAt?: Date;
+  eligibilityReviews?: Record<string, { status: 'VERIFIED' | 'NOT_VERIFIED' | 'REQUIRES_CLARIFICATION'; remarks?: string }>;
+  verificationChecklist?: Record<string, boolean>;
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
   rejectedBy?: mongoose.Types.ObjectId;
@@ -51,6 +58,7 @@ const ApplicationSchema: Schema = new Schema(
     applicationReference: { type: String, required: true, unique: true },
     citizenId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     schemeId: { type: Schema.Types.ObjectId, ref: 'Scheme', required: true },
+    district: { type: String, required: true, default: 'Chennai' },
     applicationMethod: { type: String, default: 'PROTOTYPE_ASSISTED' },
     status: {
       type: String,
@@ -74,6 +82,10 @@ const ApplicationSchema: Schema = new Schema(
     officerRemarks: { type: String, default: '' },
     correctionCount: { type: Number, default: 0 },
     assignedOfficerId: { type: Schema.Types.ObjectId, ref: 'User' },
+    assignedAt: { type: Date },
+    verificationStartedAt: { type: Date },
+    eligibilityReviews: { type: Object, default: {} },
+    verificationChecklist: { type: Object, default: {} },
     approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     approvedAt: { type: Date },
     rejectedBy: { type: Schema.Types.ObjectId, ref: 'User' },

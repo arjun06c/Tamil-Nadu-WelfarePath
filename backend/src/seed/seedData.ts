@@ -531,7 +531,7 @@ export const seedDatabase = async (): Promise<void> => {
       mobile: '9876543212',
       passwordHash: citizenPasswordHash,
       role: UserRole.CITIZEN,
-      district: 'Coimbatore',
+      district: 'Madurai',
       languagePreference: 'en'
     });
 
@@ -541,9 +541,9 @@ export const seedDatabase = async (): Promise<void> => {
       userId: citizen._id,
       dob: new Date('2003-05-15'),
       gender: 'Female',
-      district: 'Coimbatore',
-      taluk: 'Coimbatore South',
-      villageTown: 'Peelamedu',
+      district: 'Madurai',
+      taluk: 'Madurai South',
+      villageTown: 'Simmakkal',
       annualIncome: 140000,
       occupation: 'Student',
       employmentStatus: 'Student',
@@ -576,30 +576,112 @@ export const seedDatabase = async (): Promise<void> => {
     await ApplicationDocument.deleteMany({ citizenId: citizen._id });
     await BenefitRecord.deleteMany({ citizenId: citizen._id });
 
-    // SCENARIO A — Pending Verification
+    // SCENARIO A — New / Pending Verification (Pudhumai Penn Scheme - Kavitha R)
     const appA = await Application.create({
       applicationNo: 'TNP-WP-2026-00101',
       applicationReference: 'TNP-WP-2026-00101',
       citizenId: citizen._id,
       schemeId: pudhumaiScheme._id,
-      status: ApplicationStatus.DOC_VERIFICATION,
-      currentStep: 2,
-      completionPercentage: 35,
-      submittedAt: new Date(Date.now() - 3 * 86400000)
+      district: 'Madurai',
+      assignedOfficerId: officer._id,
+      assignedAt: new Date(Date.now() - 1 * 86400000),
+      status: ApplicationStatus.SUBMITTED,
+      currentStep: 1,
+      completionPercentage: 20,
+      formData: {
+        applicantName: 'Kavitha R',
+        mobile: '9876543212',
+        district: 'Madurai',
+        annualIncome: 140000,
+        gender: 'Female',
+        age: 21,
+        collegeName: 'Meenakshi Government Arts College for Women',
+        degree: 'B.A. Tamil Literature',
+        schoolName: 'Govt Girls Hr Sec School, Othakadai, Madurai'
+      },
+      submittedAt: new Date(Date.now() - 3 * 3600000) // 3 hours ago (NEW badge)
     });
+
+    // 1. Govt School Study Certificate (6th - 12th)
     await ApplicationDocument.create({
       applicationId: appA._id,
       citizenId: citizen._id,
       docType: 'GovtSchoolStudyCertificate',
-      documentName: { en: 'Govt School Study Certificate', ta: 'அரசுப் பள்ளி சான்றிதழ்' },
-      fileName: 'Govt_School_Cert.pdf',
-      fileUrl: 'https://via.placeholder.com/600x800?text=Study+Certificate',
+      documentName: { en: 'Govt School Study Certificate (6th-12th)', ta: 'அரசுப் பள்ளி சான்றிதழ் (6-12)' },
+      fileName: 'study_certificate_kavitha.pdf',
+      fileUrl: '/mock-documents/study_certificate_kavitha.pdf',
+      fileSize: 7336,
+      mimeType: 'application/pdf',
       source: 'DIGILOCKER',
       sourceReference: 'in.gov.tn.school:2026-881',
       issuer: 'School Education Department',
-      retrievedAt: new Date(Date.now() - 3 * 86400000),
+      retrievedAt: new Date(Date.now() - 3 * 3600000),
       verificationStatus: 'NOT_REVIEWED',
-      uploadedAt: new Date(Date.now() - 3 * 86400000)
+      uploadedAt: new Date(Date.now() - 3 * 3600000)
+    });
+
+    // 2. College Bonafide Study Certificate
+    await ApplicationDocument.create({
+      applicationId: appA._id,
+      citizenId: citizen._id,
+      docType: 'CollegeStudyCertificate',
+      documentName: { en: 'College Bonafide Study Certificate', ta: 'கல்லூரி படிப்புச் சான்றிதழ்' },
+      fileName: 'college_bonafide_kavitha.svg',
+      fileUrl: '/mock-documents/college_bonafide_kavitha.svg',
+      fileSize: 9300,
+      mimeType: 'image/svg+xml',
+      source: 'MANUAL_UPLOAD',
+      issuer: 'Meenakshi Government Arts College for Women (Autonomous)',
+      verificationStatus: 'NOT_REVIEWED',
+      uploadedAt: new Date(Date.now() - 3 * 3600000)
+    });
+
+    // 3. Bank Passbook (DBT Linked)
+    await ApplicationDocument.create({
+      applicationId: appA._id,
+      citizenId: citizen._id,
+      docType: 'BankPassbook',
+      documentName: { en: 'Bank Passbook (DBT Account)', ta: 'வங்கி கணக்குப் புத்தகம்' },
+      fileName: 'bank_passbook_kavitha.svg',
+      fileUrl: '/mock-documents/bank_passbook_kavitha.svg',
+      fileSize: 8136,
+      mimeType: 'image/svg+xml',
+      source: 'MANUAL_UPLOAD',
+      issuer: 'State Bank of India',
+      verificationStatus: 'NOT_REVIEWED',
+      uploadedAt: new Date(Date.now() - 3 * 3600000)
+    });
+
+    // 4. Aadhaar Card
+    await ApplicationDocument.create({
+      applicationId: appA._id,
+      citizenId: citizen._id,
+      docType: 'AadhaarCard',
+      documentName: { en: 'Aadhaar Card Copy', ta: 'ஆதார் அட்டை நகல்' },
+      fileName: 'aadhaar_card_kavitha.svg',
+      fileUrl: '/mock-documents/aadhaar_card_kavitha.svg',
+      fileSize: 6536,
+      mimeType: 'image/svg+xml',
+      source: 'DIGILOCKER',
+      issuer: 'UIDAI',
+      verificationStatus: 'NOT_REVIEWED',
+      uploadedAt: new Date(Date.now() - 3 * 3600000)
+    });
+
+    // 5. Income Certificate
+    await ApplicationDocument.create({
+      applicationId: appA._id,
+      citizenId: citizen._id,
+      docType: 'IncomeCertificate',
+      documentName: { en: 'Income Certificate', ta: 'வருமான சான்றிதழ்' },
+      fileName: 'income_certificate_kavitha.svg',
+      fileUrl: '/mock-documents/income_certificate_kavitha.svg',
+      fileSize: 11551,
+      mimeType: 'image/svg+xml',
+      source: 'DIGILOCKER',
+      issuer: 'Revenue Department',
+      verificationStatus: 'NOT_REVIEWED',
+      uploadedAt: new Date(Date.now() - 3 * 3600000)
     });
 
     // SCENARIO B — Correction Required
@@ -608,11 +690,22 @@ export const seedDatabase = async (): Promise<void> => {
       applicationReference: 'TNP-WP-2026-00102',
       citizenId: citizen._id,
       schemeId: kmutScheme._id,
+      district: 'Madurai',
+      assignedOfficerId: officer._id,
+      assignedAt: new Date(Date.now() - 4 * 86400000),
       status: ApplicationStatus.CORRECTION_REQUIRED,
       currentStep: 2,
       completionPercentage: 45,
-      officerRemarks: 'Certificate number does not match the submitted information.',
+      officerRemarks: 'Smart Ration Card scan is blurry. Please upload a clear photo or fetch from DigiLocker.',
       correctionCount: 1,
+      formData: {
+        applicantName: 'Kavitha R',
+        mobile: '9876543212',
+        district: 'Madurai',
+        annualIncome: 140000,
+        gender: 'Female',
+        age: 21
+      },
       submittedAt: new Date(Date.now() - 5 * 86400000)
     });
     await ApplicationDocument.create({
@@ -620,26 +713,54 @@ export const seedDatabase = async (): Promise<void> => {
       citizenId: citizen._id,
       docType: 'SmartRationCard',
       documentName: { en: 'Family Smart Ration Card', ta: 'குடும்ப ரேஷன் கார்டு' },
-      fileName: 'Ration_Card_Scan.pdf',
-      fileUrl: 'https://via.placeholder.com/600x800?text=Ration+Card',
+      fileName: 'smart_ration_card_kavitha.svg',
+      fileUrl: '/mock-documents/smart_ration_card_kavitha.svg',
+      fileSize: 8571,
+      mimeType: 'image/svg+xml',
       source: 'MANUAL_UPLOAD',
       verificationStatus: 'CORRECTION_REQUIRED',
-      correctionReason: 'Certificate number mismatch',
-      officerRemarks: 'Certificate number does not match the submitted information.',
+      correctionReason: 'Image too blurry to read family member details',
+      officerRemarks: 'Smart Ration Card scan is blurry. Please upload a clear photo or fetch from DigiLocker.',
       correctionRequestedAt: new Date(Date.now() - 1 * 86400000),
       correctionRequestedBy: officer._id,
       uploadedAt: new Date(Date.now() - 5 * 86400000)
     });
+    await ApplicationDocument.create({
+      applicationId: appB._id,
+      citizenId: citizen._id,
+      docType: 'BankPassbook',
+      documentName: { en: 'Bank Passbook (DBT Account)', ta: 'வங்கி கணக்குப் புத்தகம்' },
+      fileName: 'bank_passbook_kavitha.svg',
+      fileUrl: '/mock-documents/bank_passbook_kavitha.svg',
+      fileSize: 8136,
+      mimeType: 'image/svg+xml',
+      source: 'MANUAL_UPLOAD',
+      issuer: 'State Bank of India',
+      verificationStatus: 'NOT_REVIEWED',
+      uploadedAt: new Date(Date.now() - 5 * 86400000)
+    });
 
-    // SCENARIO C — Verified / Officer Review
+    // SCENARIO C — Under Review
     const appC = await Application.create({
       applicationNo: 'TNP-WP-2026-00103',
       applicationReference: 'TNP-WP-2026-00103',
       citizenId: citizen._id,
       schemeId: scholarshipScheme._id,
-      status: ApplicationStatus.OFFICER_REVIEW,
+      district: 'Madurai',
+      assignedOfficerId: officer._id,
+      assignedAt: new Date(Date.now() - 6 * 86400000),
+      verificationStartedAt: new Date(Date.now() - 1 * 86400000),
+      status: ApplicationStatus.UNDER_REVIEW,
       currentStep: 3,
-      completionPercentage: 75,
+      completionPercentage: 70,
+      formData: {
+        applicantName: 'Kavitha R',
+        mobile: '9876543212',
+        district: 'Madurai',
+        annualIncome: 140000,
+        gender: 'Female',
+        age: 21
+      },
       submittedAt: new Date(Date.now() - 7 * 86400000)
     });
     await ApplicationDocument.create({
@@ -647,16 +768,32 @@ export const seedDatabase = async (): Promise<void> => {
       citizenId: citizen._id,
       docType: 'CommunityCertificate',
       documentName: { en: 'Community Certificate', ta: 'சாதி சான்றிதழ்' },
-      fileName: 'Community_Cert.pdf',
-      fileUrl: 'https://via.placeholder.com/600x800?text=Community+Cert',
+      fileName: 'community_certificate_kavitha.svg',
+      fileUrl: '/mock-documents/community_certificate_kavitha.svg',
+      fileSize: 9099,
+      mimeType: 'image/svg+xml',
       source: 'DIGILOCKER',
       sourceReference: 'in.gov.tn.edistrict.comm:2026-992',
       issuer: 'Revenue Department',
       retrievedAt: new Date(Date.now() - 7 * 86400000),
       verificationStatus: 'VERIFIED',
-      verifiedAt: new Date(Date.now() - 2 * 86400000),
+      verifiedAt: new Date(Date.now() - 1 * 86400000),
       verifiedBy: officer._id,
-      officerRemarks: 'Document details match submitted application.',
+      officerRemarks: 'Community Certificate verified via e-District database.',
+      uploadedAt: new Date(Date.now() - 7 * 86400000)
+    });
+    await ApplicationDocument.create({
+      applicationId: appC._id,
+      citizenId: citizen._id,
+      docType: 'IncomeCertificate',
+      documentName: { en: 'Income Certificate', ta: 'வருமான சான்றிதழ்' },
+      fileName: 'income_certificate_kavitha.svg',
+      fileUrl: '/mock-documents/income_certificate_kavitha.svg',
+      fileSize: 11551,
+      mimeType: 'image/svg+xml',
+      source: 'DIGILOCKER',
+      issuer: 'Revenue Department',
+      verificationStatus: 'NOT_REVIEWED',
       uploadedAt: new Date(Date.now() - 7 * 86400000)
     });
 
@@ -666,11 +803,24 @@ export const seedDatabase = async (): Promise<void> => {
       applicationReference: 'TNP-WP-2026-00104',
       citizenId: citizen._id,
       schemeId: oldAgeScheme._id,
+      district: 'Madurai',
+      assignedOfficerId: officer._id,
+      assignedAt: new Date(Date.now() - 10 * 86400000),
+      verificationStartedAt: new Date(Date.now() - 3 * 86400000),
       status: ApplicationStatus.APPROVED,
       currentStep: 5,
       completionPercentage: 100,
       approvedBy: officer._id,
       approvedAt: new Date(Date.now() - 1 * 86400000),
+      officerRemarks: 'Application fully verified and approved for monthly pension grant.',
+      formData: {
+        applicantName: 'Kavitha R',
+        mobile: '9876543212',
+        district: 'Madurai',
+        annualIncome: 140000,
+        gender: 'Female',
+        age: 21
+      },
       submittedAt: new Date(Date.now() - 10 * 86400000)
     });
     await ApplicationDocument.create({
@@ -678,8 +828,10 @@ export const seedDatabase = async (): Promise<void> => {
       citizenId: citizen._id,
       docType: 'AgeProof',
       documentName: { en: 'Age Proof Document', ta: 'வயதுச் சான்று' },
-      fileName: 'Aadhaar_Age_Proof.pdf',
-      fileUrl: 'https://via.placeholder.com/600x800?text=Aadhaar+Proof',
+      fileName: 'aadhaar_card_kavitha.svg',
+      fileUrl: '/mock-documents/aadhaar_card_kavitha.svg',
+      fileSize: 6536,
+      mimeType: 'image/svg+xml',
       source: 'DIGILOCKER',
       issuer: 'UIDAI / Revenue Dept',
       verificationStatus: 'VERIFIED',
@@ -692,8 +844,26 @@ export const seedDatabase = async (): Promise<void> => {
       citizenId: citizen._id,
       docType: 'IncomeCertificate',
       documentName: { en: 'Income Certificate', ta: 'வருமான சான்றிதழ்' },
-      fileName: 'Income_Cert_Verified.pdf',
-      fileUrl: 'https://via.placeholder.com/600x800?text=Income+Cert',
+      fileName: 'income_certificate_kavitha.svg',
+      fileUrl: '/mock-documents/income_certificate_kavitha.svg',
+      fileSize: 11551,
+      mimeType: 'image/svg+xml',
+      source: 'DIGILOCKER',
+      issuer: 'Revenue Department',
+      verificationStatus: 'VERIFIED',
+      verifiedAt: new Date(Date.now() - 2 * 86400000),
+      verifiedBy: officer._id,
+      uploadedAt: new Date(Date.now() - 10 * 86400000)
+    });
+    await ApplicationDocument.create({
+      applicationId: appD._id,
+      citizenId: citizen._id,
+      docType: 'NativityCertificate',
+      documentName: { en: 'Nativity & Residence Certificate', ta: 'இருப்பிடச் சான்றிதழ்' },
+      fileName: 'nativity_certificate_kavitha.svg',
+      fileUrl: '/mock-documents/nativity_certificate_kavitha.svg',
+      fileSize: 9211,
+      mimeType: 'image/svg+xml',
       source: 'DIGILOCKER',
       issuer: 'Revenue Department',
       verificationStatus: 'VERIFIED',
@@ -714,7 +884,501 @@ export const seedDatabase = async (): Promise<void> => {
       notes: 'Benefit approved and released under Indira Gandhi Old Age Pension Scheme.'
     });
 
-    console.log(`✅ Seeded Demo System Users & 4 Consistent Demo Scenarios (Pending, Correction Required, Officer Review, Approved).`);
+    // Seed Additional Realistic Citizens & Applications for Authentic District Analytics
+    const moreCitizensData = [
+      { name: 'Muthukumar S', email: 'muthu.s@gmail.com', mobile: '9876543220', district: 'Madurai' },
+      { name: 'Meenakshi A', email: 'meenakshi.a@gmail.com', mobile: '9876543221', district: 'Madurai' },
+      { name: 'Karthik V', email: 'karthik.v@gmail.com', mobile: '9876543222', district: 'Madurai' },
+      { name: 'Priya S', email: 'priya.s@gmail.com', mobile: '9876543223', district: 'Madurai' },
+      { name: 'Anbuchelvan K', email: 'anbu.k@gmail.com', mobile: '9876543224', district: 'Madurai' },
+      { name: 'Lakshmi N', email: 'lakshmi.n@gmail.com', mobile: '9876543225', district: 'Madurai' },
+      { name: 'Murugan P', email: 'murugan.p@gmail.com', mobile: '9876543226', district: 'Chennai' }
+    ];
+
+    const seededMoreCitizens: any[] = [];
+    for (const cData of moreCitizensData) {
+      let existing = await User.findOne({ email: cData.email });
+      if (!existing) {
+        existing = await User.create({
+          ...cData,
+          passwordHash: citizenPasswordHash,
+          role: UserRole.CITIZEN,
+          languagePreference: 'ta'
+        });
+      }
+      seededMoreCitizens.push(existing);
+    }
+
+    const cmHealthScheme = seededSchemes.find(s => s.domainKey === 'health') || pudhumaiScheme;
+    const diffAbledScheme = seededSchemes.find(s => s.domainKey === 'differently_abled') || pudhumaiScheme;
+    const housingScheme = seededSchemes.find(s => s.domainKey === 'housing') || pudhumaiScheme;
+
+    // Delete existing extended demo applications and their documents
+    const extendedRefs = [
+      'TNP-WP-2026-00105', 'TNP-WP-2026-00106', 'TNP-WP-2026-00107', 'TNP-WP-2026-00108',
+      'TNP-WP-2026-00109', 'TNP-WP-2026-00110', 'TNP-WP-2026-00111', 'TNP-WP-2026-00112',
+      'TNP-WP-2026-00113', 'TNP-WP-2026-00114', 'TNP-WP-2026-00115', 'TNP-WP-2026-00116',
+      'TNP-WP-2026-00117', 'TNP-WP-2026-00118', 'TNP-WP-2026-00119', 'TNP-WP-2026-00120',
+      'TNP-WP-2026-00121', 'TNP-WP-2026-00122', 'TNP-WP-2026-00123', 'TNP-WP-2026-00124',
+      'TNP-WP-2026-00125', 'TNP-WP-2026-00126'
+    ];
+    const prevApps = await Application.find({ applicationReference: { $in: extendedRefs } });
+    if (prevApps.length > 0) {
+      await ApplicationDocument.deleteMany({ applicationId: { $in: prevApps.map((a) => a._id) } });
+    }
+    await Application.deleteMany({ applicationReference: { $in: extendedRefs } });
+
+    const extendedApps = [
+      // 0-3 Days Pending
+      {
+        ref: 'TNP-WP-2026-00105',
+        citizen: seededMoreCitizens[0],
+        scheme: pudhumaiScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.SUBMITTED,
+        subDays: 2,
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00106',
+        citizen: seededMoreCitizens[1],
+        scheme: kmutScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.SUBMITTED,
+        subDays: 1,
+        assignedOfficer: officer._id
+      },
+      // 4-7 Days Pending
+      {
+        ref: 'TNP-WP-2026-00107',
+        citizen: seededMoreCitizens[2],
+        scheme: scholarshipScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.DOC_VERIFICATION,
+        subDays: 5,
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00108',
+        citizen: seededMoreCitizens[3],
+        scheme: oldAgeScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.UNDER_REVIEW,
+        subDays: 6,
+        verifDays: 2,
+        assignedOfficer: officer._id
+      },
+      // 8-15 Days Pending
+      {
+        ref: 'TNP-WP-2026-00109',
+        citizen: seededMoreCitizens[4],
+        scheme: cmHealthScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.UNDER_REVIEW,
+        subDays: 10,
+        verifDays: 4,
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00110',
+        citizen: seededMoreCitizens[5],
+        scheme: diffAbledScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.RESUBMITTED,
+        subDays: 12,
+        correctionCount: 1,
+        officerRemarks: 'Disability certificate resubmitted with clear doctor signature.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00111',
+        citizen: seededMoreCitizens[0],
+        scheme: pudhumaiScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.CORRECTION_REQUIRED,
+        subDays: 14,
+        correctionCount: 1,
+        officerRemarks: 'Bonafide certificate page 2 signature missing. Please resubmit.',
+        assignedOfficer: officer._id
+      },
+      // 16-30 Days Pending
+      {
+        ref: 'TNP-WP-2026-00112',
+        citizen: seededMoreCitizens[1],
+        scheme: kmutScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.UNDER_REVIEW,
+        subDays: 20,
+        verifDays: 6,
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00113',
+        citizen: seededMoreCitizens[2],
+        scheme: housingScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.CORRECTION_REQUIRED,
+        subDays: 25,
+        correctionCount: 1,
+        officerRemarks: 'Patta survey number clarification required from Tahsildar.',
+        assignedOfficer: officer._id
+      },
+      // > 30 Days Pending (Critical Backlog)
+      {
+        ref: 'TNP-WP-2026-00114',
+        citizen: seededMoreCitizens[3],
+        scheme: oldAgeScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.SUBMITTED,
+        subDays: 35,
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00115',
+        citizen: seededMoreCitizens[4],
+        scheme: scholarshipScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.UNDER_REVIEW,
+        subDays: 42,
+        verifDays: 10,
+        assignedOfficer: officer._id
+      },
+      // Completed - APPROVED with authentic turnaround times
+      {
+        ref: 'TNP-WP-2026-00116',
+        citizen: seededMoreCitizens[5],
+        scheme: pudhumaiScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 18,
+        verifDays: 16,
+        apprDays: 15,
+        remarks: 'Direct benefit transfer order released.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00117',
+        citizen: seededMoreCitizens[0],
+        scheme: kmutScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 22,
+        verifDays: 20,
+        apprDays: 19,
+        remarks: 'Ration card & bank passbook verified.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00118',
+        citizen: seededMoreCitizens[1],
+        scheme: cmHealthScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 15,
+        verifDays: 13,
+        apprDays: 12,
+        remarks: 'UHP card linked successfully.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00119',
+        citizen: seededMoreCitizens[2],
+        scheme: diffAbledScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 28,
+        verifDays: 25,
+        apprDays: 23,
+        remarks: 'Medical board verification verified.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00120',
+        citizen: seededMoreCitizens[3],
+        scheme: oldAgeScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 8,
+        verifDays: 6,
+        apprDays: 4,
+        remarks: 'Pension sanctioned under Indira Gandhi scheme.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00123',
+        citizen: seededMoreCitizens[4],
+        scheme: kmutScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 4,
+        verifDays: 2,
+        apprDays: 1,
+        remarks: 'Aadhaar authenticated via DigiLocker.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00124',
+        citizen: seededMoreCitizens[5],
+        scheme: pudhumaiScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 3,
+        verifDays: 2,
+        apprDays: 0.5,
+        remarks: 'Government school certificate verified.',
+        assignedOfficer: officer._id
+      },
+      // Completed - REJECTED with specific statutory reasons
+      {
+        ref: 'TNP-WP-2026-00121',
+        citizen: seededMoreCitizens[0],
+        scheme: scholarshipScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.REJECTED,
+        subDays: 16,
+        verifDays: 14,
+        rejcDays: 12,
+        remarks: 'Family annual income ₹3,80,000 exceeds statutory eligibility ceiling of ₹2,50,000.',
+        assignedOfficer: officer._id
+      },
+      {
+        ref: 'TNP-WP-2026-00122',
+        citizen: seededMoreCitizens[1],
+        scheme: pudhumaiScheme,
+        district: 'Madurai',
+        status: ApplicationStatus.REJECTED,
+        subDays: 24,
+        verifDays: 21,
+        rejcDays: 20,
+        remarks: 'Applicant studied in private matriculation school; ineligible under TN Govt school mandate.',
+        assignedOfficer: officer._id
+      },
+      // District Scoping Validation Records (Chennai District)
+      {
+        ref: 'TNP-WP-2026-00125',
+        citizen: seededMoreCitizens[6],
+        scheme: pudhumaiScheme,
+        district: 'Chennai',
+        status: ApplicationStatus.APPROVED,
+        subDays: 5,
+        verifDays: 3,
+        apprDays: 2,
+        remarks: 'Approved in Chennai jurisdiction.',
+        assignedOfficer: admin._id
+      },
+      {
+        ref: 'TNP-WP-2026-00126',
+        citizen: seededMoreCitizens[6],
+        scheme: kmutScheme,
+        district: 'Chennai',
+        status: ApplicationStatus.SUBMITTED,
+        subDays: 2,
+        assignedOfficer: admin._id
+      }
+    ];
+
+    for (const item of extendedApps) {
+      const subDate = new Date(Date.now() - item.subDays * 86400000);
+      const verifDate = item.verifDays ? new Date(Date.now() - item.verifDays * 86400000) : undefined;
+      const apprDate = item.apprDays ? new Date(Date.now() - item.apprDays * 86400000) : undefined;
+      const rejcDate = item.rejcDays ? new Date(Date.now() - item.rejcDays * 86400000) : undefined;
+
+      const history = [
+        {
+          previousStatus: 'DRAFT',
+          newStatus: ApplicationStatus.SUBMITTED,
+          changedBy: item.citizen._id,
+          changedByRole: 'Citizen',
+          remarks: 'Application submitted by citizen',
+          timestamp: subDate
+        }
+      ];
+
+      if (verifDate) {
+        history.push({
+          previousStatus: ApplicationStatus.SUBMITTED,
+          newStatus: ApplicationStatus.UNDER_REVIEW,
+          changedBy: item.assignedOfficer,
+          changedByRole: 'Officer',
+          remarks: 'Officer initiated document audit',
+          timestamp: verifDate
+        });
+      }
+
+      if (apprDate) {
+        history.push({
+          previousStatus: ApplicationStatus.UNDER_REVIEW,
+          newStatus: ApplicationStatus.APPROVED,
+          changedBy: item.assignedOfficer,
+          changedByRole: 'Officer',
+          remarks: item.remarks || 'Application approved',
+          timestamp: apprDate
+        });
+      } else if (rejcDate) {
+        history.push({
+          previousStatus: ApplicationStatus.UNDER_REVIEW,
+          newStatus: ApplicationStatus.REJECTED,
+          changedBy: item.assignedOfficer,
+          changedByRole: 'Officer',
+          remarks: item.remarks || 'Application rejected',
+          timestamp: rejcDate
+        });
+      }
+
+      const createdApp = await Application.create({
+        applicationNo: item.ref,
+        applicationReference: item.ref,
+        citizenId: item.citizen._id,
+        schemeId: item.scheme._id,
+        district: item.district,
+        assignedOfficerId: item.assignedOfficer,
+        assignedAt: subDate,
+        verificationStartedAt: verifDate,
+        status: item.status,
+        currentStep: item.status === ApplicationStatus.APPROVED ? 5 : item.status === ApplicationStatus.UNDER_REVIEW ? 3 : 1,
+        completionPercentage: item.status === ApplicationStatus.APPROVED ? 100 : item.status === ApplicationStatus.UNDER_REVIEW ? 60 : 25,
+        correctionCount: item.correctionCount || 0,
+        officerRemarks: item.remarks || '',
+        approvedBy: apprDate ? item.assignedOfficer : undefined,
+        approvedAt: apprDate,
+        rejectedBy: rejcDate ? item.assignedOfficer : undefined,
+        rejectedAt: rejcDate,
+        formData: {
+          applicantName: item.citizen.name,
+          mobile: item.citizen.mobile,
+          district: item.district,
+          annualIncome: 140000,
+          gender: 'Female'
+        },
+        submittedAt: subDate,
+        statusHistory: history
+      });
+
+      // Attach realistic mock documents corresponding to scheme
+      const mockDocCatalog: Record<string, { fileName: string; fileUrl: string; fileSize: number; mimeType: string }> = {
+        GovtSchoolStudyCertificate: {
+          fileName: 'study_certificate_kavitha.pdf',
+          fileUrl: '/mock-documents/study_certificate_kavitha.pdf',
+          fileSize: 7336,
+          mimeType: 'application/pdf'
+        },
+        CollegeStudyCertificate: {
+          fileName: 'college_bonafide_kavitha.svg',
+          fileUrl: '/mock-documents/college_bonafide_kavitha.svg',
+          fileSize: 9300,
+          mimeType: 'image/svg+xml'
+        },
+        BankPassbook: {
+          fileName: 'bank_passbook_kavitha.svg',
+          fileUrl: '/mock-documents/bank_passbook_kavitha.svg',
+          fileSize: 8136,
+          mimeType: 'image/svg+xml'
+        },
+        AadhaarCard: {
+          fileName: 'aadhaar_card_kavitha.svg',
+          fileUrl: '/mock-documents/aadhaar_card_kavitha.svg',
+          fileSize: 6536,
+          mimeType: 'image/svg+xml'
+        },
+        IncomeCertificate: {
+          fileName: 'income_certificate_kavitha.svg',
+          fileUrl: '/mock-documents/income_certificate_kavitha.svg',
+          fileSize: 11551,
+          mimeType: 'image/svg+xml'
+        },
+        SmartRationCard: {
+          fileName: 'smart_ration_card_kavitha.svg',
+          fileUrl: '/mock-documents/smart_ration_card_kavitha.svg',
+          fileSize: 8571,
+          mimeType: 'image/svg+xml'
+        },
+        CommunityCertificate: {
+          fileName: 'community_certificate_kavitha.svg',
+          fileUrl: '/mock-documents/community_certificate_kavitha.svg',
+          fileSize: 9099,
+          mimeType: 'image/svg+xml'
+        },
+        NativityCertificate: {
+          fileName: 'nativity_certificate_kavitha.svg',
+          fileUrl: '/mock-documents/nativity_certificate_kavitha.svg',
+          fileSize: 9211,
+          mimeType: 'image/svg+xml'
+        },
+        AgeProof: {
+          fileName: 'aadhaar_card_kavitha.svg',
+          fileUrl: '/mock-documents/aadhaar_card_kavitha.svg',
+          fileSize: 6536,
+          mimeType: 'image/svg+xml'
+        },
+        HouseSitePatta: {
+          fileName: 'nativity_certificate_kavitha.svg',
+          fileUrl: '/mock-documents/nativity_certificate_kavitha.svg',
+          fileSize: 9211,
+          mimeType: 'image/svg+xml'
+        },
+        DisabilityCertificate: {
+          fileName: 'study_certificate_kavitha.pdf',
+          fileUrl: '/mock-documents/study_certificate_kavitha.pdf',
+          fileSize: 7336,
+          mimeType: 'application/pdf'
+        }
+      };
+
+      const docsToSeed = item.scheme?.requiredDocuments && item.scheme.requiredDocuments.length > 0
+        ? item.scheme.requiredDocuments
+        : [
+            { docType: 'AadhaarCard', label: { en: 'Aadhaar Card', ta: 'ஆதார் அட்டை' } },
+            { docType: 'IncomeCertificate', label: { en: 'Income Certificate', ta: 'வருமான சான்றிதழ்' } }
+          ];
+
+      for (let dIdx = 0; dIdx < docsToSeed.length; dIdx++) {
+        const reqDoc = docsToSeed[dIdx];
+        const template = mockDocCatalog[reqDoc.docType] || {
+          fileName: 'income_certificate_kavitha.svg',
+          fileUrl: '/mock-documents/income_certificate_kavitha.svg',
+          fileSize: 11551,
+          mimeType: 'image/svg+xml'
+        };
+
+        let verStatus: 'NOT_REVIEWED' | 'VERIFIED' | 'CORRECTION_REQUIRED' | 'REJECTED' = 'NOT_REVIEWED';
+        let verDate = undefined;
+        let verBy = undefined;
+        let corrReason = undefined;
+        let offRem = '';
+
+        if (item.status === ApplicationStatus.APPROVED) {
+          verStatus = 'VERIFIED';
+          verDate = apprDate || subDate;
+          verBy = item.assignedOfficer;
+          offRem = 'Statutory criteria verified and approved.';
+        } else if (item.status === ApplicationStatus.CORRECTION_REQUIRED && dIdx === 0) {
+          verStatus = 'CORRECTION_REQUIRED';
+          corrReason = item.remarks || 'Document scan unclear or needs rectification.';
+          offRem = item.remarks || 'Document correction requested.';
+        }
+
+        await ApplicationDocument.create({
+          applicationId: createdApp._id,
+          citizenId: item.citizen._id,
+          docType: reqDoc.docType,
+          documentName: reqDoc.label || { en: reqDoc.docType, ta: reqDoc.docType },
+          fileName: template.fileName,
+          fileUrl: template.fileUrl,
+          fileSize: template.fileSize,
+          mimeType: template.mimeType,
+          source: dIdx % 2 === 0 ? 'DIGILOCKER' : 'MANUAL_UPLOAD',
+          issuer: dIdx % 2 === 0 ? 'e-District TN / DigiLocker' : 'Authorized Issuing Authority',
+          verificationStatus: verStatus,
+          verifiedAt: verDate,
+          verifiedBy: verBy,
+          correctionReason: corrReason,
+          officerRemarks: offRem,
+          uploadedAt: subDate
+        });
+      }
+    }
+
+    console.log(`✅ Seeded Demo System Users, Scenarios A-D & 22 Historical Application Records for Madurai & Chennai.`);
     console.log(`   - Admin: admin@tnwelfare.gov.in / Admin@123`);
     console.log(`   - Officer: officer@tnwelfare.gov.in / Officer@123`);
     console.log(`   - Citizen: citizen@gmail.com / Citizen@123`);

@@ -15,26 +15,201 @@ import { DigiLockerDocument } from '../models/DigiLockerDocument';
 
 export const getAllApplications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, search } = req.query;
+    const { status, search, queue, district, schemeId, sort } = req.query;
 
     const query: any = {};
-    if (status) {
-      query.status = status;
+
+    // Queue-based filtering
+    if (queue) {
+      if (queue === 'new') {
+        query.status = ApplicationStatus.SUBMITTED;
+      } else if (queue === 'pending') {
+        query.status = { $in: [ApplicationStatus.RESUBMITTED, ApplicationStatus.DOC_VERIFICATION] };
+      } else if (queue === 'under_review') {
+        query.status = { $in: [ApplicationStatus.UNDER_REVIEW, ApplicationStatus.OFFICER_REVIEW] };
+      } else if (queue === 'corrections') {
+        query.status = ApplicationStatus.CORRECTION_REQUIRED;
+      } else if (queue === 'completed') {
+        query.status = { $in: [ApplicationStatus.APPROVED, ApplicationStatus.REJECTED] };
+      }
+    } else if (status) {
+      if (typeof status === 'string' && status.includes(',')) {
+        query.status = { $in: status.split(',') };
+      } else {
+        query.status = status;
+      }
     }
+
+    // District filter
+    if (district) {
+      query.district = district;
+    }
+
+    // Scheme filter
+    if (schemeId) {
+      query.schemeId = schemeId;
+    }
+
+    // Search query
     if (search) {
       const searchRegex = new RegExp(String(search), 'i');
-      query.$or = [{ applicationNo: searchRegex }, { applicationReference: searchRegex }];
+      query.$or = [
+        { applicationNo: searchRegex },
+        { applicationReference: searchRegex }
+      ];
     }
+
+    // Officer jurisdiction scoping
+    if (req.user?.role === UserRole.OFFICER) {
+      const officerDistrict = req.user.district;
+      query.$or = query.$or
+        ? [{ $and: [query, { $or: [{ district: officerDistrict }, { assignedOfficerId: req.user.id }] }] }]
+        : [{ district: officerDistrict }, { assignedOfficerId: req.user.id }];
+    }
+
+    const sortOrder = sort === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
 
     const applications = await Application.find(query)
       .populate('schemeId')
       .populate('citizenId', 'name email mobile district')
-      .sort({ createdAt: -1 });
+      .populate('assignedOfficerId', 'name email district')
+      .sort(sortOrder as any);
 
     res.status(200).json({ applications });
   } catch (error) {
     console.error('getAllApplications error:', error);
     res.status(500).json({ message: 'Error fetching application queue' });
+  }
+};
+
+export const getOfficerDashboardStats = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const baseQuery: any = {};
+    if (req.user?.role === UserRole.OFFICER) {
+      const officerDistrict = req.user.district;
+      baseQuery.$or = [
+        { district: officerDistrict },
+        { assignedOfficerId: req.user.id }
+      ];
+    }
+
+    const [
+      newApplications,
+      pendingVerification,
+      underReview,
+      correctionRequired,
+      approved,
+      rejected
+    ] = await Promise.all([
+      Application.countDocuments({ ...baseQuery, status: ApplicationStatus.SUBMITTED }),
+      Application.countDocuments({
+        ...baseQuery,
+        status: { $in: [ApplicationStatus.SUBMITTED, ApplicationStatus.RESUBMITTED, ApplicationStatus.DOC_VERIFICATION] }
+      }),
+      Application.countDocuments({
+        ...baseQuery,
+        status: { $in: [ApplicationStatus.UNDER_REVIEW, ApplicationStatus.OFFICER_REVIEW] }
+      }),
+      Application.countDocuments({ ...baseQuery, status: ApplicationStatus.CORRECTION_REQUIRED }),
+      Application.countDocuments({ ...baseQuery, status: ApplicationStatus.APPROVED }),
+      Application.countDocuments({ ...baseQuery, status: ApplicationStatus.REJECTED })
+    ]);
+
+    res.status(200).json({
+      stats: {
+        newApplications,
+        pendingVerification,
+        underReview,
+        correctionRequired,
+        approved,
+        rejected
+      }
+    });
+  } catch (error) {
+    console.error('getOfficerDashboardStats error:', error);
+    res.status(500).json({ message: 'Error calculating officer statistics' });
+  }
+};
+
+export const saveOfficerVerification = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthenticated' });
+      return;
+    }
+
+    const { id } = req.params;
+    const { eligibilityReviews, verificationChecklist, officerRemarks, startReview } = req.body;
+
+    const application = await Application.findById(id);
+    if (!application) {
+      res.status(404).json({ message: 'Application not found' });
+      return;
+    }
+
+    if (eligibilityReviews !== undefined) {
+      application.eligibilityReviews = eligibilityReviews;
+    }
+    if (verificationChecklist !== undefined) {
+      application.verificationChecklist = verificationChecklist;
+    }
+    if (officerRemarks !== undefined) {
+      application.officerRemarks = officerRemarks;
+    }
+
+    // If starting review or transitioning from SUBMITTED / RESUBMITTED to UNDER_REVIEW
+    if (
+      startReview ||
+      application.status === ApplicationStatus.SUBMITTED ||
+      application.status === ApplicationStatus.RESUBMITTED
+    ) {
+      const prev = application.status;
+      application.status = ApplicationStatus.UNDER_REVIEW;
+      application.verificationStartedAt = new Date();
+      application.assignedOfficerId = req.user.id as any;
+      application.statusHistory.push({
+        previousStatus: prev as string,
+        newStatus: ApplicationStatus.UNDER_REVIEW,
+        changedBy: req.user.id as any,
+        changedByRole: req.user.role || 'Officer',
+        remarks: officerRemarks || 'Officer started verification and case review',
+        timestamp: new Date()
+      });
+
+      // Notify citizen
+      await Notification.create({
+        userId: application.citizenId,
+        title: {
+          en: `Verification Started: ${application.applicationReference}`,
+          ta: `சரிபார்ப்பு தொடங்கியது: ${application.applicationReference}`
+        },
+        message: {
+          en: `A District Welfare Officer has started reviewing your application documents and eligibility criteria.`,
+          ta: `உங்கள் விண்ணப்பம் மற்றும் ஆவணங்களை மாவட்ட நல அலுவலர் சரிபார்க்கத் தொடங்கியுள்ளார்.`
+        },
+        type: 'INFO',
+        linkUrl: `/citizen/applications/${application._id}`
+      });
+    }
+
+    await application.save();
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      actorEmail: req.user.email,
+      action: 'OFFICER_VERIFICATION_CHECKLIST_SAVED',
+      targetType: 'Application',
+      targetId: application._id.toString(),
+      details: `Saved verification checklist and eligibility reviews`
+    });
+
+    res.status(200).json({
+      message: 'Verification progress saved successfully',
+      application
+    });
+  } catch (error) {
+    console.error('saveOfficerVerification error:', error);
+    res.status(500).json({ message: 'Error saving verification progress' });
   }
 };
 
@@ -243,6 +418,18 @@ export const updateApplicationStatus = async (
       return;
     }
 
+    // Validation: Rejection requires a mandatory specific reason
+    if (status === ApplicationStatus.REJECTED && (!remarks || remarks.trim().length === 0)) {
+      res.status(400).json({ message: 'A specific rejection reason is mandatory before rejecting an application.' });
+      return;
+    }
+
+    // Validation: Requesting corrections requires mandatory instructions
+    if (status === ApplicationStatus.CORRECTION_REQUIRED && (!remarks || remarks.trim().length === 0)) {
+      res.status(400).json({ message: 'Detailed correction instructions and reasons are mandatory.' });
+      return;
+    }
+
     // When an Officer approves an application, auto-verify any attached documents and ensure mandatory scheme requirements are met.
     if (status === ApplicationStatus.APPROVED || status === ApplicationStatus.BENEFIT_RELEASED) {
       const scheme = await Scheme.findById(application.schemeId);
@@ -295,6 +482,9 @@ export const updateApplicationStatus = async (
       application.rejectedAt = new Date();
     } else if (status === ApplicationStatus.CORRECTION_REQUIRED) {
       application.correctionCount = (application.correctionCount || 0) + 1;
+    } else if (status === ApplicationStatus.UNDER_REVIEW) {
+      application.verificationStartedAt = new Date();
+      application.assignedOfficerId = req.user.id as any;
     }
 
     application.statusHistory.push({
@@ -325,6 +515,65 @@ export const updateApplicationStatus = async (
         nextRenewalDate: nextYear,
         benefitReferenceNo: `TN-BEN-${Math.floor(100000 + Math.random() * 900000)}`,
         notes: `Benefit approved under ${scheme?.name?.en || 'Welfare Scheme'}`
+      });
+
+      // Citizen notification for approval
+      await Notification.create({
+        userId: application.citizenId,
+        title: {
+          en: `Application Approved: ${application.applicationReference}`,
+          ta: `விண்ணப்பம் அங்கீகரிக்கப்பட்டது: ${application.applicationReference}`
+        },
+        message: {
+          en: `Congratulations! Your welfare application ${application.applicationReference} has been verified and APPROVED by the District Welfare Officer. Remarks: "${remarks || 'All requirements satisfied.'}"`,
+          ta: `வாழ்த்துகள்! உங்கள் விண்ணப்பம் ${application.applicationReference} அங்கீகரிக்கப்பட்டுள்ளது.`
+        },
+        type: 'SUCCESS',
+        linkUrl: `/citizen/applications/${application._id}`
+      });
+    } else if (status === ApplicationStatus.REJECTED) {
+      // Citizen notification for rejection
+      await Notification.create({
+        userId: application.citizenId,
+        title: {
+          en: `Application Rejected: ${application.applicationReference}`,
+          ta: `விண்ணப்பம் நிராகரிக்கப்பட்டது: ${application.applicationReference}`
+        },
+        message: {
+          en: `Your application ${application.applicationReference} could not be approved. Reason: "${remarks}". You may review the decision in your tracking portal.`,
+          ta: `உங்கள் விண்ணப்பம் ${application.applicationReference} நிராகரிக்கப்பட்டது. காரணம்: "${remarks}".`
+        },
+        type: 'ACTION_REQUIRED',
+        linkUrl: `/citizen/applications/${application._id}`
+      });
+    } else if (status === ApplicationStatus.CORRECTION_REQUIRED) {
+      // Citizen notification for correction
+      await Notification.create({
+        userId: application.citizenId,
+        title: {
+          en: `Action Required: Document Corrections (${application.applicationReference})`,
+          ta: `நடவடிக்கை தேவை: ஆவணத் திருத்தம் (${application.applicationReference})`
+        },
+        message: {
+          en: `Officer requested correction for application ${application.applicationReference}: "${remarks}". Please upload the required documents to continue.`,
+          ta: `விண்ணப்பத்தில் திருத்தம் கோரப்பட்டுள்ளது: "${remarks}".`
+        },
+        type: 'WARNING',
+        linkUrl: `/citizen/applications/${application._id}`
+      });
+    } else if (status === ApplicationStatus.UNDER_REVIEW) {
+      await Notification.create({
+        userId: application.citizenId,
+        title: {
+          en: `Verification Started: ${application.applicationReference}`,
+          ta: `சரிபார்ப்பு தொடங்கியது: ${application.applicationReference}`
+        },
+        message: {
+          en: `The District Welfare Officer has begun reviewing your application and supporting documentation.`,
+          ta: `உங்கள் விண்ணப்பத்தை மாவட்ட நல அலுவலர் ஆய்வு செய்யத் தொடங்கியுள்ளார்.`
+        },
+        type: 'INFO',
+        linkUrl: `/citizen/applications/${application._id}`
       });
     }
 

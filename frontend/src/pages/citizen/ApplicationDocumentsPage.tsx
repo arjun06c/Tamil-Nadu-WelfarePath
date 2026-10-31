@@ -79,11 +79,25 @@ export const ApplicationDocumentsPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !id) return;
     try {
+      let serverFileUrl = URL.createObjectURL(file);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await api.post('/documents/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (uploadRes.data?.fileUrl) {
+          serverFileUrl = uploadRes.data.fileUrl;
+        }
+      } catch (uploadErr) {
+        console.warn('Fallback to local file URL:', uploadErr);
+      }
+
       await api.post(`/applications/${id}/correction`, {
         replacementDoc: {
           docType,
           fileName: file.name,
-          fileUrl: URL.createObjectURL(file),
+          fileUrl: serverFileUrl,
           ocrConfidence: 85
         }
       });

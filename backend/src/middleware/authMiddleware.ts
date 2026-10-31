@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     role: UserRole;
     email: string;
     name: string;
+    district?: string;
   };
 }
 
@@ -28,6 +29,7 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
       role: UserRole;
       email: string;
       name: string;
+      district?: string;
     };
     req.user = decoded;
     next();

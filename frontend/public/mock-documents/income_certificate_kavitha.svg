@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1130" width="800" height="1130">
+  <defs>
+    <style>
+      .title { font-family: 'Times New Roman', serif; font-weight: bold; fill: #10243A; text-anchor: middle; }
+      .tamil { font-family: 'Arial Unicode MS', 'Plus Jakarta Sans', sans-serif; font-weight: bold; fill: #10243A; text-anchor: middle; }
+      .header-sub { font-family: 'Arial', sans-serif; font-size: 13px; fill: #334155; text-anchor: middle; font-weight: 600; }
+      .label { font-family: 'Arial', sans-serif; font-size: 13px; fill: #475569; font-weight: bold; }
+      .val { font-family: 'Arial', sans-serif; font-size: 14px; fill: #0f172a; font-weight: bold; }
+      .watermark { font-family: 'Arial', sans-serif; font-size: 26px; font-weight: 900; fill: rgba(220, 38, 38, 0.13); text-anchor: middle; letter-spacing: 4px; }
+      .ref { font-family: 'Courier New', monospace; font-size: 13px; font-weight: bold; fill: #1e3a8a; }
+      .cert-body { font-family: 'Georgia', serif; font-size: 14px; fill: #1e293b; line-height: 1.6; }
+    </style>
+    <pattern id="bg-pattern" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 60 M 0 0 L 60 60" fill="none" stroke="#f1f5f9" stroke-width="0.8"/>
+    </pattern>
+  </defs>
+
+  <!-- Page Background -->
+  <rect width="800" height="1130" fill="#fffdfa"/>
+  <rect width="800" height="1130" fill="url(#bg-pattern)"/>
+
+  <!-- Ornate Border -->
+  <rect x="25" y="25" width="750" height="1080" fill="none" stroke="#10243A" stroke-width="3"/>
+  <rect x="32" y="32" width="736" height="1066" fill="none" stroke="#d97706" stroke-width="1.2"/>
+  <rect x="36" y="36" width="728" height="1058" fill="none" stroke="#10243A" stroke-width="0.6"/>
+
+  <!-- Diagonal Watermark Across Entire Page -->
+  <g transform="translate(400, 560) rotate(-40)">
+    <text y="-180" class="watermark">★ MOCK CITIZEN DOCUMENT ★</text>
+    <text y="-140" class="watermark">PROTOTYPE DEMONSTRATION ONLY</text>
+    <text y="0" class="watermark" font-size="34" fill="rgba(220, 38, 38, 0.16)">NOT VALID FOR OFFICIAL USE</text>
+    <text y="140" class="watermark">TN WELFAREPATH VERIFICATION WORKSPACE</text>
+    <text y="180" class="watermark">★ FOR AUDIT SIMULATION ONLY ★</text>
+  </g>
+
+  <!-- Header Emblem / Seal -->
+  <g transform="translate(400, 80)">
+    <!-- Simulated TN Emblem -->
+    <circle cx="0" cy="0" r="32" fill="#f8fafc" stroke="#10243A" stroke-width="2"/>
+    <circle cx="0" cy="0" r="28" fill="#10243A"/>
+    <!-- Temple Gopuram Icon -->
+    <path d="M -16 16 L 16 16 L 12 -4 L 8 -16 L 0 -22 L -8 -16 L -12 -4 Z" fill="#fbbf24"/>
+    <text y="7" font-family="'Times New Roman', serif" font-size="8" font-weight="bold" fill="#ffffff" text-anchor="middle">TN GOVT</text>
+  </g>
+
+  <!-- Government Header -->
+  <text x="400" y="135" class="tamil" font-size="19">தமிழ்நாடு அரசு • வருவாய்த் துறை</text>
+  <text x="400" y="158" class="title" font-size="18" letter-spacing="1">GOVERNMENT OF TAMIL NADU</text>
+  <text x="400" y="178" class="header-sub">REVENUE &amp; DISASTER MANAGEMENT DEPARTMENT</text>
+  <text x="400" y="196" class="header-sub" fill="#64748b">MADURAI DISTRICT • MADURAI SOUTH TALUK</text>
+
+  <!-- Divider Ribbon -->
+  <line x1="80" y1="210" x2="720" y2="210" stroke="#10243A" stroke-width="1.5"/>
+  <rect x="250" y="220" width="300" height="34" rx="6" fill="#10243A"/>
+  <text x="400" y="242" font-family="'Arial', sans-serif" font-size="14" font-weight="900" fill="#fef08a" text-anchor="middle" letter-spacing="1.5">INCOME CERTIFICATE / வருமானச் சான்றிதழ்</text>
+  <line x1="80" y1="265" x2="720" y2="265" stroke="#10243A" stroke-width="1.5"/>
+
+  <!-- Metadata Bar -->
+  <g transform="translate(80, 290)">
+    <rect width="640" height="52" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="18" y="22" class="label">Certificate Reference No:</text>
+    <text x="18" y="40" class="ref">TN-REV-INC-2026-881942</text>
+
+    <text x="320" y="22" class="label">e-District Application No:</text>
+    <text x="320" y="40" class="val">TN-MDU-2026-004819</text>
+
+    <text x="520" y="22" class="label">Issue Date:</text>
+    <text x="520" y="40" class="val">12-Jan-2026</text>
+  </g>
+
+  <!-- Certificate Body Text -->
+  <g transform="translate(80, 375)">
+    <text x="0" y="0" class="cert-body" font-size="15">
+      <tspan x="0" dy="0">This is to certify that the annual family income of the applicant specified below has been verified</tspan>
+      <tspan x="0" dy="24">after due enquiry by the Revenue Authorities and as per the records of this office:</tspan>
+    </text>
+  </g>
+
+  <!-- Table of Certified Details -->
+  <g transform="translate(80, 435)">
+    <rect width="640" height="260" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+    
+    <!-- Row 1 -->
+    <rect x="0" y="0" width="220" height="42" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.5"/>
+    <rect x="220" y="0" width="420" height="42" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.5"/>
+    <text x="16" y="26" class="label">Name of Applicant / விண்ணப்பதாரர்:</text>
+    <text x="236" y="26" class="val" font-size="15">Selvi KAVITHA R (கவிதா ரா)</text>
+
+    <!-- Row 2 -->
+    <rect x="0" y="42" width="220" height="42" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.5"/>
+    <rect x="220" y="42" width="420" height="42" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.5"/>
+    <text x="16" y="68" class="label">Father / Guardian Name:</text>
+    <text x="236" y="68" class="val">Thiru RAMASAMY M (ராமசாமி மு)</text>
+
+    <!-- Row 3 -->
+    <rect x="0" y="84" width="220" height="46" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.5"/>
+    <rect x="220" y="84" width="420" height="46" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.5"/>
+    <text x="16" y="112" class="label">Permanent Residential Address:</text>
+    <text x="236" y="104" class="val" font-size="12.5">No. 14, Kamarajar Street, Anuppanadi,</text>
+    <text x="236" y="122" class="val" font-size="12.5">Madurai South Taluk, Madurai District - 625009</text>
+
+    <!-- Row 4 -->
+    <rect x="0" y="130" width="220" height="44" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.5"/>
+    <rect x="220" y="130" width="420" height="44" fill="#eff6ff" stroke="#cbd5e1" stroke-width="0.5"/>
+    <text x="16" y="156" class="label">Annual Family Income / வருமானம்:</text>
+    <text x="236" y="157" class="val" font-size="16" fill="#1e3a8a">₹ 1,40,000 /-</text>
+
+    <!-- Row 5 -->
+    <rect x="0" y="174" width="220" height="42" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.5"/>
+    <rect x="220" y="174" width="420" height="42" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.5"/>
+    <text x="16" y="200" class="label">Income in Words / எழுத்தில்:</text>
+    <text x="236" y="200" class="val" font-size="13">RUPEES ONE LAKH FORTY THOUSAND ONLY</text>
+
+    <!-- Row 6 -->
+    <rect x="0" y="216" width="220" height="44" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.5"/>
+    <rect x="220" y="216" width="420" height="44" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.5"/>
+    <text x="16" y="242" class="label">Purpose of Certificate:</text>
+    <text x="236" y="242" class="val" font-size="13" fill="#047857">Tamil Nadu Higher Education / Pudhumai Penn Welfare Scheme</text>
+  </g>
+
+  <!-- Statutory Remarks -->
+  <g transform="translate(80, 725)">
+    <rect width="640" height="90" rx="8" fill="#fefce8" stroke="#fef08a" stroke-width="1"/>
+    <text x="16" y="22" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#854d0e">STATUTORY CONDITIONS &amp; AUDIT REMARKS:</text>
+    <text x="16" y="40" font-family="'Arial', sans-serif" font-size="10.5" fill="#713f12">1. This certificate is issued digitally based on Village Administrative Officer (VAO) enquiry report.</text>
+    <text x="16" y="58" font-family="'Arial', sans-serif" font-size="10.5" fill="#713f12">2. Valid for the Academic / Financial Year 2025-2026 for Government Welfare Schemes.</text>
+    <text x="16" y="76" font-family="'Arial', sans-serif" font-size="10.5" fill="#713f12">3. Any false declaration by the applicant or suppression of facts will invalidate this certificate.</text>
+  </g>
+
+  <!-- Signatures & Official Stamp -->
+  <g transform="translate(80, 845)">
+    <!-- QR Code Mock Block -->
+    <rect x="0" y="0" width="105" height="105" fill="#ffffff" stroke="#94a3b8" stroke-width="1" rx="6"/>
+    <rect x="10" y="10" width="85" height="85" fill="#1e293b"/>
+    <rect x="22" y="22" width="24" height="24" fill="#ffffff"/>
+    <rect x="26" y="26" width="16" height="16" fill="#1e293b"/>
+    <rect x="58" y="22" width="24" height="24" fill="#ffffff"/>
+    <rect x="62" y="26" width="16" height="16" fill="#1e293b"/>
+    <rect x="22" y="58" width="24" height="24" fill="#ffffff"/>
+    <rect x="26" y="62" width="16" height="16" fill="#1e293b"/>
+    <text x="52" y="122" font-family="'Arial', sans-serif" font-size="9" fill="#64748b" text-anchor="middle">Scan to Verify</text>
+
+    <!-- Official Stamp Seal Simulation -->
+    <g transform="translate(240, 50)">
+      <circle cx="0" cy="0" r="42" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="4,2"/>
+      <circle cx="0" cy="0" r="38" fill="none" stroke="#2563eb" stroke-width="1"/>
+      <text y="-22" font-family="'Arial', sans-serif" font-size="8.5" font-weight="bold" fill="#2563eb" text-anchor="middle">TALUK OFFICE • MADURAI SOUTH</text>
+      <text y="5" font-family="'Arial', sans-serif" font-size="10" font-weight="900" fill="#1d4ed8" text-anchor="middle">GOVT OF TN</text>
+      <text y="18" font-family="'Arial', sans-serif" font-size="8.5" font-weight="bold" fill="#2563eb" text-anchor="middle">OFFICIAL SEAL</text>
+      <text y="30" font-family="'Arial', sans-serif" font-size="7.5" fill="#3b82f6" text-anchor="middle">12-01-2026</text>
+    </g>
+
+    <!-- Digital Signature Block -->
+    <g transform="translate(430, 10)">
+      <rect width="210" height="95" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+      <text x="12" y="20" font-family="'Arial', sans-serif" font-size="10" font-weight="bold" fill="#047857">✔ Digitally Signed By:</text>
+      <text x="12" y="38" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#0f172a">TAHSILDAR (வட்டாட்சியர்)</text>
+      <text x="12" y="54" font-family="'Arial', sans-serif" font-size="10" fill="#475569">Madurai South Taluk Office</text>
+      <text x="12" y="70" font-family="'Arial', sans-serif" font-size="9.5" fill="#64748b">Date: 2026.01.12 11:42:18 IST</text>
+      <text x="12" y="86" font-family="'Arial', sans-serif" font-size="8.5" fill="#10b981" font-weight="bold">Valid Digital Signature (DSC-TN-REV)</text>
+    </g>
+  </g>
+
+  <!-- Prototype Advisory Notice Footer -->
+  <g transform="translate(80, 1010)">
+    <rect width="640" height="50" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1.2"/>
+    <text x="320" y="20" font-family="'Arial', sans-serif" font-size="11" font-weight="900" fill="#991b1b" text-anchor="middle">
+      PROTOTYPE MOCK DOCUMENT — FOR TN WELFAREPATH SYSTEM TESTING ONLY
+    </text>
+    <text x="320" y="38" font-family="'Arial', sans-serif" font-size="9.5" font-weight="bold" fill="#b91c1c" text-anchor="middle">
+      Not an authentic Government of Tamil Nadu certificate. Generated strictly for verification workspace demonstration.
+    </text>
+  </g>
+</svg>

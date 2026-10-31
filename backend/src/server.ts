@@ -11,22 +11,32 @@ import assistantRoutes from './routes/assistantRoutes';
 import miscRoutes from './routes/miscRoutes';
 import digilockerRoutes from './routes/digilockerRoutes';
 import citizenRoutes from './routes/citizenRoutes';
+import officerReportRoutes from './routes/officerReportRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { seedDatabase } from './seed/seedData';
 import { WelfareDomain } from './models/WelfareDomain';
 import { User } from './models/User';
+import { Application as ApplicationModel } from './models/Application';
+
+import path from 'path';
+import documentRoutes from './routes/documentRoutes';
 
 const app: Application = express();
 
 // Core Middlewares
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+// Static Document Storage & Mock Assets
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/mock-documents', express.static(path.join(__dirname, '../public/mock-documents')));
+app.use('/api/documents/static', express.static(path.join(__dirname, '../public/mock-documents')));
 
 // Security Headers Middleware
 app.use((req: Request, res: Response, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   if (env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -48,11 +58,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/schemes', schemeRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/documents', documentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/misc', miscRoutes);
 app.use('/api/integrations/digilocker', digilockerRoutes);
 app.use('/api/citizen', citizenRoutes);
+app.use('/api/officer/reports', officerReportRoutes);
+app.use('/api/admin/reports', officerReportRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
@@ -64,7 +77,8 @@ const startServer = async () => {
   // Auto-seed if database is unpopulated or missing seeded users
   const domainCount = await WelfareDomain.countDocuments();
   const userCount = await User.countDocuments();
-  if (domainCount === 0 || userCount === 0) {
+  const appCount = await ApplicationModel.countDocuments();
+  if (domainCount === 0 || userCount === 0 || appCount < 10) {
     console.log('[Auto-Seed] Initializing master database & default user accounts...');
     await seedDatabase();
   }

@@ -6,6 +6,7 @@ const Scheme_1 = require("../models/Scheme");
 const ApplicationDocument_1 = require("../models/ApplicationDocument");
 const BenefitRecord_1 = require("../models/BenefitRecord");
 const Notification_1 = require("../models/Notification");
+const User_1 = require("../models/User");
 const duplicateService_1 = require("../services/duplicateService");
 const submitApplication = async (req, res) => {
     try {
@@ -19,7 +20,28 @@ const submitApplication = async (req, res) => {
             res.status(404).json({ message: 'Scheme not found' });
             return;
         }
-        // Backend Mandatory Document Validation Check (Requirement 1 & 23)
+        // Duplicate submission prevention for active applications
+        const existingActiveApp = await Application_1.Application.findOne({
+            citizenId: req.user.id,
+            schemeId: scheme._id,
+            status: {
+                $in: [
+                    Application_1.ApplicationStatus.SUBMITTED,
+                    Application_1.ApplicationStatus.UNDER_REVIEW,
+                    Application_1.ApplicationStatus.CORRECTION_REQUIRED,
+                    Application_1.ApplicationStatus.RESUBMITTED,
+                    Application_1.ApplicationStatus.DOC_VERIFICATION,
+                    Application_1.ApplicationStatus.OFFICER_REVIEW
+                ]
+            }
+        });
+        if (existingActiveApp) {
+            res.status(400).json({
+                message: `You already have an active application (${existingActiveApp.applicationReference}) under processing for this scheme. Please wait for the current application to complete.`
+            });
+            return;
+        }
+        // Backend Mandatory Document Validation Check
         const mandatoryConfigs = scheme.requiredDocuments?.filter((r) => r.isMandatory !== false) || [];
         const providedDocTypes = (documents || []).map((d) => d.docType);
         const missingMandatoryDocs = mandatoryConfigs.filter((cfg) => !providedDocTypes.includes(cfg.docType));
@@ -31,6 +53,14 @@ const submitApplication = async (req, res) => {
             });
             return;
         }
+        // Determine district from form data or user profile
+        const district = formData?.district || req.user.district || 'Chennai';
+        // Jurisdiction routing: Find officer responsible for this district
+        let assignedOfficer = await User_1.User.findOne({ role: User_1.UserRole.OFFICER, district });
+        if (!assignedOfficer) {
+            // Fallback: look for any officer
+            assignedOfficer = await User_1.User.findOne({ role: User_1.UserRole.OFFICER });
+        }
         // Generate Secure Unique Reference Number: TNP-WP-2026-XXXXXX
         const randomSuffix = Math.floor(100000 + Math.random() * 900000);
         const applicationReference = `TNP-WP-2026-${randomSuffix}`;
@@ -39,10 +69,13 @@ const submitApplication = async (req, res) => {
             applicationReference,
             citizenId: req.user.id,
             schemeId: scheme._id,
+            district,
+            assignedOfficerId: assignedOfficer ? assignedOfficer._id : undefined,
+            assignedAt: assignedOfficer ? new Date() : undefined,
             applicationMethod: applicationMethod || 'PROTOTYPE_ASSISTED',
             status: Application_1.ApplicationStatus.SUBMITTED,
-            currentStep: 6,
-            completionPercentage: 100,
+            currentStep: 1,
+            completionPercentage: 10,
             formData: formData || {},
             declarationAccepted: declarationAccepted !== undefined ? declarationAccepted : true,
             statusHistory: [
@@ -52,7 +85,7 @@ const submitApplication = async (req, res) => {
                     changedBy: req.user.id,
                     changedByRole: 'Citizen',
                     reason: 'Application submitted by citizen',
-                    remarks: 'Application assistance package logged into WelfarePath system.',
+                    remarks: `Application logged for ${district} jurisdiction. Forwarded to District Officer.`,
                     timestamp: new Date()
                 }
             ]
@@ -91,12 +124,28 @@ const submitApplication = async (req, res) => {
                 ta: `விண்ணப்பம் ${applicationReference} சமர்ப்பிக்கப்பட்டது`
             },
             message: {
-                en: `Your application assistance package for ${scheme.name.en} has been logged. Current Status: Submitted.`,
-                ta: `${scheme.name.ta} திட்டத்திற்கான உங்கள் விண்ணப்பம் பெறப்பட்டது.`
+                en: `Your application for ${scheme.name.en} has been logged. Forwarded to ${district} District Officer. Status: SUBMITTED.`,
+                ta: `${scheme.name.ta} திட்டத்திற்கான உங்கள் விண்ணப்பம் ${district} மாவட்ட அதிகாரிக்கு அனுப்பப்பட்டுள்ளது.`
             },
             type: 'SUCCESS',
             linkUrl: `/citizen/applications/${application._id}`
         });
+        // Create Notification for the responsible Officer
+        if (assignedOfficer) {
+            await Notification_1.Notification.create({
+                userId: assignedOfficer._id,
+                title: {
+                    en: `New Application Received: ${applicationReference}`,
+                    ta: `புதிய விண்ணப்பம் பெறப்பட்டது: ${applicationReference}`
+                },
+                message: {
+                    en: `New application for ${scheme.name.en} from ${district} submitted by citizen ${req.user.name || ''}. Initial verification pending.`,
+                    ta: `${district} மாவட்டத்திலிருந்து ${scheme.name.ta} திட்டத்திற்கான புதிய விண்ணப்பம் சமர்ப்பிக்கப்பட்டுள்ளது.`
+                },
+                type: 'ACTION_REQUIRED',
+                linkUrl: `/officer/applications/${application._id}`
+            });
+        }
         // Trigger asynchronous integrity check
         (0, duplicateService_1.checkApplicationIntegrity)(application);
         res.status(201).json({
@@ -241,16 +290,32 @@ const resubmitCorrection = async (req, res) => {
                 uploadedAt: new Date()
             });
         }
-        application.status = Application_1.ApplicationStatus.DOC_VERIFICATION;
+        application.status = Application_1.ApplicationStatus.RESUBMITTED;
         application.statusHistory.push({
             previousStatus: Application_1.ApplicationStatus.CORRECTION_REQUIRED,
-            newStatus: Application_1.ApplicationStatus.DOC_VERIFICATION,
+            newStatus: Application_1.ApplicationStatus.RESUBMITTED,
             changedBy: req.user.id,
             changedByRole: 'Citizen',
             reason: 'Citizen submitted corrected supporting document.',
             timestamp: new Date()
         });
         await application.save();
+        // Notify assigned officer
+        if (application.assignedOfficerId) {
+            await Notification_1.Notification.create({
+                userId: application.assignedOfficerId,
+                title: {
+                    en: `Corrected Documents Resubmitted: ${application.applicationReference}`,
+                    ta: `திருத்தப்பட்ட ஆவணம் மீண்டும் சமர்ப்பிக்கப்பட்டது: ${application.applicationReference}`
+                },
+                message: {
+                    en: `Citizen has resubmitted corrected documents for application ${application.applicationReference}. Ready for verification.`,
+                    ta: `${application.applicationReference} விண்ணப்பத்திற்கான திருத்தப்பட்ட ஆவணம் பெறப்பட்டுள்ளது.`
+                },
+                type: 'ACTION_REQUIRED',
+                linkUrl: `/officer/applications/${application._id}`
+            });
+        }
         res.status(200).json({
             message: 'Correction resubmitted successfully. Case returned to officer review queue.',
             application,

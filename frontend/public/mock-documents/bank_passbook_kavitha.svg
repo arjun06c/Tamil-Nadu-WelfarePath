@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 650" width="900" height="650">
+  <defs>
+    <style>
+      .bank-title { font-family: 'Arial', sans-serif; font-weight: 900; fill: #003366; }
+      .tamil { font-family: 'Arial Unicode MS', 'Plus Jakarta Sans', sans-serif; font-weight: bold; fill: #003366; }
+      .label { font-family: 'Arial', sans-serif; font-size: 11.5px; fill: #475569; font-weight: bold; }
+      .val { font-family: 'Courier New', monospace; font-size: 13.5px; fill: #0f172a; font-weight: bold; }
+      .watermark { font-family: 'Arial', sans-serif; font-size: 24px; font-weight: 900; fill: rgba(220, 38, 38, 0.14); text-anchor: middle; letter-spacing: 3px; }
+    </style>
+  </defs>
+
+  <rect width="900" height="650" fill="#f8fafc"/>
+  <rect x="15" y="15" width="870" height="620" rx="12" fill="#ffffff" stroke="#003366" stroke-width="2.5"/>
+
+  <!-- Watermark -->
+  <g transform="translate(450, 325) rotate(-25)">
+    <text y="-80" class="watermark">★ MOCK CITIZEN DOCUMENT ★</text>
+    <text y="-40" class="watermark">PROTOTYPE DEMONSTRATION ONLY</text>
+    <text y="10" class="watermark" font-size="30" fill="rgba(220, 38, 38, 0.18)">NOT VALID FOR OFFICIAL BANKING USE</text>
+    <text y="60" class="watermark">FOR AUDIT SIMULATION ONLY</text>
+  </g>
+
+  <!-- SBI Header Ribbon -->
+  <rect x="15" y="15" width="870" height="85" rx="12" fill="#003366"/>
+  <rect x="15" y="70" width="870" height="30" fill="#003366"/>
+  <g transform="translate(60, 56)">
+    <!-- SBI Keyhole Logo Simulation -->
+    <circle cx="0" cy="0" r="22" fill="#29b6f6"/>
+    <circle cx="0" cy="-3" r="8" fill="#ffffff"/>
+    <rect x="-3" y="-3" width="6" height="18" fill="#ffffff"/>
+  </g>
+
+  <text x="105" y="48" class="tamil" font-size="16" fill="#ffffff">பாரத ஸ்டேட் வங்கி</text>
+  <text x="105" y="72" class="bank-title" font-size="22" fill="#ffffff">STATE BANK OF INDIA</text>
+  
+  <text x="850" y="44" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#38bdf8" text-anchor="end">SAVINGS BANK PASSBOOK</text>
+  <text x="850" y="64" font-family="'Arial', sans-serif" font-size="11" fill="#e2e8f0" text-anchor="end">DBT ENABLED • AADHAAR SEEDED</text>
+
+  <!-- Account Details Grid -->
+  <g transform="translate(40, 115)">
+    <rect width="820" height="240" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Left Column -->
+    <g transform="translate(20, 20)">
+      <text x="0" y="15" class="label">ACCOUNT HOLDER NAME:</text>
+      <text x="0" y="34" class="val" font-size="15" fill="#1e3a8a">KAVITHA R (கவிதா ரா)</text>
+
+      <text x="0" y="65" class="label">FATHER / GUARDIAN NAME:</text>
+      <text x="0" y="84" class="val">RAMASAMY M</text>
+
+      <text x="0" y="115" class="label">COMMUNICATION ADDRESS:</text>
+      <text x="0" y="134" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#1e293b">14, KAMARAJAR STREET, ANUPPANADI,</text>
+      <text x="0" y="150" font-family="'Arial', sans-serif" font-size="12" font-weight="bold" fill="#1e293b">MADURAI SOUTH, TAMIL NADU - 625009</text>
+
+      <text x="0" y="180" class="label">MOBILE NUMBER LINKED:</text>
+      <text x="0" y="198" class="val">XXXXXX3212</text>
+    </g>
+
+    <!-- Right Column -->
+    <g transform="translate(420, 20)">
+      <text x="0" y="15" class="label">SAVINGS ACCOUNT NO (DBT RECIPIENT):</text>
+      <text x="0" y="34" class="val" font-size="16" fill="#047857">XXXX-XXXX-4589</text>
+
+      <text x="0" y="65" class="label">CUSTOMER ID (CIF NO):</text>
+      <text x="0" y="84" class="val">89240184920</text>
+
+      <text x="0" y="115" class="label">IFSC CODE:</text>
+      <text x="0" y="134" class="val" fill="#1e3a8a">SBIN0000872</text>
+
+      <text x="210" y="115" class="label">MICR CODE:</text>
+      <text x="210" y="134" class="val">625002002</text>
+
+      <text x="0" y="165" class="label">BRANCH NAME &amp; ADDRESS:</text>
+      <text x="0" y="182" font-family="'Arial', sans-serif" font-size="11.5" font-weight="bold" fill="#1e293b">MADURAI MAIN BRANCH, WEST VELI STREET,</text>
+      <text x="0" y="196" font-family="'Arial', sans-serif" font-size="11" fill="#475569">MADURAI - 625001 • TEL: 0452-2345678</text>
+    </g>
+  </g>
+
+  <!-- Recent DBT Transaction Entries Mock Table -->
+  <g transform="translate(40, 375)">
+    <rect width="820" height="150" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+    
+    <!-- Table Header -->
+    <rect x="0" y="0" width="820" height="28" fill="#e2e8f0" rx="4"/>
+    <text x="60" y="18" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#334155" text-anchor="middle">DATE</text>
+    <text x="230" y="18" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#334155">TRANSACTION PARTICULARS</text>
+    <text x="490" y="18" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#334155" text-anchor="middle">CHQ / REF NO</text>
+    <text x="630" y="18" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#334155" text-anchor="middle">DEPOSIT (CR)</text>
+    <text x="750" y="18" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#334155" text-anchor="middle">BALANCE</text>
+
+    <!-- Row 1 -->
+    <text x="60" y="52" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="middle">02-DEC-2025</text>
+    <text x="230" y="52" font-family="'Courier New', monospace" font-size="11">NACH/DBT GOVT SCHEME BEN TEST</text>
+    <text x="490" y="52" font-family="'Courier New', monospace" font-size="11" text-anchor="middle">DBT9928172</text>
+    <text x="630" y="52" font-family="'Courier New', monospace" font-size="11" font-weight="bold" fill="#047857" text-anchor="middle">1.00</text>
+    <text x="750" y="52" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="middle">2,840.50</text>
+
+    <!-- Row 2 -->
+    <text x="60" y="80" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="middle">15-JAN-2026</text>
+    <text x="230" y="80" font-family="'Courier New', monospace" font-size="11">UPI/8291048291/KAVITHA R</text>
+    <text x="490" y="80" font-family="'Courier New', monospace" font-size="11" text-anchor="middle">UPI8819201</text>
+    <text x="630" y="80" font-family="'Courier New', monospace" font-size="11" font-weight="bold" fill="#047857" text-anchor="middle">500.00</text>
+    <text x="750" y="80" font-family="'Courier New', monospace" font-size="11" font-weight="bold" text-anchor="middle">3,340.50</text>
+
+    <!-- Verification Badge Box -->
+    <rect x="15" y="100" width="380" height="36" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+    <text x="30" y="122" font-family="'Arial', sans-serif" font-size="11" font-weight="bold" fill="#15803d">
+      ✔ NPCI AADHAAR DBT MAPPING: ACTIVE (MAPPED TO SBIN0000872)
+    </text>
+
+    <!-- Branch Seal -->
+    <g transform="translate(680, 115)">
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#003366" stroke-width="1.5" stroke-dasharray="3,1"/>
+      <text y="-8" font-family="'Arial', sans-serif" font-size="6.5" font-weight="bold" fill="#003366" text-anchor="middle">SBI • MADURAI</text>
+      <text y="4" font-family="'Arial', sans-serif" font-size="8" font-weight="bold" fill="#003366" text-anchor="middle">OFFICIAL</text>
+      <text y="14" font-family="'Arial', sans-serif" font-size="6.5" fill="#003366" text-anchor="middle">STAMP</text>
+    </g>
+  </g>
+
+  <!-- Prototype Footer -->
+  <g transform="translate(40, 545)">
+    <rect width="820" height="50" rx="6" fill="#fee2e2" stroke="#fca5a5" stroke-width="1.2"/>
+    <text x="410" y="20" font-family="'Arial', sans-serif" font-size="11" font-weight="900" fill="#991b1b" text-anchor="middle">
+      PROTOTYPE MOCK DOCUMENT — FOR TN WELFAREPATH SYSTEM TESTING ONLY
+    </text>
+    <text x="410" y="38" font-family="'Arial', sans-serif" font-size="9.5" font-weight="bold" fill="#b91c1c" text-anchor="middle">
+      Not an authentic banking passbook. Generated strictly for verification workspace demonstration.
+    </text>
+  </g>
+</svg>

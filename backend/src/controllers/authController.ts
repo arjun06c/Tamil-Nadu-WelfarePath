@@ -7,8 +7,8 @@ import { registerSchema, loginSchema } from '../validators/authValidator';
 import { env } from '../config/env';
 import { AuthRequest } from '../middleware/authMiddleware';
 
-const generateToken = (id: string, role: UserRole, email: string, name: string): string => {
-  return jwt.sign({ id, role, email, name }, env.JWT_SECRET, {
+const generateToken = (id: string, role: UserRole, email: string, name: string, district?: string): string => {
+  return jwt.sign({ id, role, email, name, district }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN as any
   });
 };
@@ -69,7 +69,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       });
     }
 
-    const token = generateToken(user._id.toString(), user.role, user.email, user.name);
+    const token = generateToken(user._id.toString(), user.role, user.email, user.name, user.district);
 
     res.status(201).json({
       message: 'Registration successful',
@@ -115,7 +115,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const token = generateToken(user._id.toString(), user.role, user.email, user.name);
+    const token = generateToken(user._id.toString(), user.role, user.email, user.name, user.district);
 
     res.status(200).json({
       message: 'Login successful',

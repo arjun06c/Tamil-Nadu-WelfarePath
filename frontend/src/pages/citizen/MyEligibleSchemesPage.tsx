@@ -18,8 +18,14 @@ import {
   ChevronUp,
   Sparkles,
   UserCheck,
-  FileText
+  FileText,
+  Landmark,
+  X,
+  ArrowUpDown
 } from 'lucide-react';
+import { PageHeader } from '../../components/common/PageHeader';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { EmptyState } from '../../components/common/EmptyState';
 
 export const MyEligibleSchemesPage: React.FC = () => {
   const { lang } = useAuth();
@@ -39,10 +45,11 @@ export const MyEligibleSchemesPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [domains, setDomains] = useState<any[]>([]);
 
-  // Filters
+  // Filters & Sorting
   const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get('status') || 'ALL');
   const [selectedDomain, setSelectedDomain] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'match' | 'name' | 'domain'>('match');
   const [showNotEligible, setShowNotEligible] = useState<boolean>(false);
   const [selectedSchemeDetail, setSelectedSchemeDetail] = useState<any | null>(null);
 
@@ -108,7 +115,8 @@ export const MyEligibleSchemesPage: React.FC = () => {
       (selectedStatus === 'POTENTIAL_MATCH' && item.status === 'POTENTIAL_MATCH') ||
       (selectedStatus === 'NEEDS_INFO' && item.status === 'NEEDS_INFORMATION') ||
       (selectedStatus === 'NEEDS_INFORMATION' && item.status === 'NEEDS_INFORMATION') ||
-      (selectedStatus === 'DOCS_NEEDED' && (item.status === 'DOCUMENTS_REQUIRED' || (item.missingDocuments && item.missingDocuments.length > 0)));
+      (selectedStatus === 'DOCS_NEEDED' &&
+        (item.status === 'DOCUMENTS_REQUIRED' || (item.missingDocuments && item.missingDocuments.length > 0)));
 
     const domainMatch = selectedDomain === 'ALL' || item.scheme?.domainKey === selectedDomain;
 
@@ -121,175 +129,184 @@ export const MyEligibleSchemesPage: React.FC = () => {
     return statusMatch && domainMatch && searchMatch;
   });
 
-  const getStatusBadgeUI = (status: string) => {
-    switch (status) {
-      case 'STRONG_MATCH':
-        return (
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{isTa ? 'முழு தகுதி (STRONG MATCH)' : 'STRONG MATCH'}</span>
-          </span>
-        );
-      case 'POTENTIAL_MATCH':
-        return (
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-            <span>{isTa ? 'சாத்தியமான தகுதி (POTENTIAL MATCH)' : 'POTENTIAL MATCH'}</span>
-          </span>
-        );
-      case 'NEEDS_INFORMATION':
-        return (
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-800 border border-sky-300">
-            <HelpCircle className="w-3.5 h-3.5 text-sky-600" />
-            <span>{isTa ? 'கூடுதல் தகவல் தேவை' : 'MORE INFORMATION NEEDED'}</span>
-          </span>
-        );
-      case 'DOCUMENTS_REQUIRED':
-        return (
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
-            <FileCheck2 className="w-3.5 h-3.5 text-indigo-600" />
-            <span>{isTa ? 'ஆவணங்கள் தேவைப்படுகின்றன' : 'DOCUMENTS NEEDED'}</span>
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">
-            <XCircle className="w-3.5 h-3.5 text-slate-500" />
-            <span>{isTa ? 'தகுதியற்றது' : 'NOT ELIGIBLE'}</span>
-          </span>
-        );
+  // Sort recommendations
+  const sortedRecommendations = [...filteredRecommendations].sort((a, b) => {
+    if (sortBy === 'name') {
+      const nameA = a.scheme?.name?.en || '';
+      const nameB = b.scheme?.name?.en || '';
+      return nameA.localeCompare(nameB);
     }
-  };
+    if (sortBy === 'domain') {
+      const domA = a.scheme?.domainKey || '';
+      const domB = b.scheme?.domainKey || '';
+      return domA.localeCompare(domB);
+    }
+    // Default by Match Strength: STRONG_MATCH first, then POTENTIAL_MATCH, then others
+    const score = (status: string) => {
+      if (status === 'STRONG_MATCH') return 3;
+      if (status === 'POTENTIAL_MATCH') return 2;
+      return 1;
+    };
+    return score(b.status) - score(a.status);
+  });
 
   if (loading) {
     return (
-      <div className="py-20 text-center space-y-3">
-        <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <div className="py-24 text-center space-y-3">
+        <div className="w-10 h-10 border-3 border-[#10243A] border-t-teal-500 rounded-full animate-spin mx-auto"></div>
         <p className="text-xs font-bold text-slate-500">
-          {isTa ? 'உங்கள் சுயவிவரத்துடன் நலத்திட்டங்களை ஒப்பிடுகிறது...' : 'Evaluating personalized scheme matches based on policy engine...'}
+          {isTa
+            ? 'உங்கள் சுயவிவரத்துடன் நலத்திட்டங்களை ஒப்பிடுகிறது...'
+            : 'Evaluating personalized scheme matches based on state policy rules...'}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       
-      {/* Header Banner */}
-      <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl border border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2 text-teal-400 text-xs font-extrabold uppercase tracking-wider mb-1">
-              <BadgeCheck className="w-4 h-4 text-teal-400" />
-              <span>{isTa ? 'தனிப்பட்ட தகுதிப் பட்டியல்' : 'PERSONALIZED MATCH RESULTS'}</span>
-            </div>
-            <h1 className="text-2xl font-black tracking-tight">
-              {isTa ? 'எனக்கு தகுதியான நலத்திட்டங்கள்' : 'My Eligible Schemes'}
-            </h1>
-            <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-              {isTa
-                ? 'உங்கள் தற்போதைய சுயவிவரத்துடன் பொருந்தக்கூடிய அரசு நலத்திட்டங்கள்.'
-                : 'Welfare schemes that may match your current profile.'}
-            </p>
-          </div>
+      {/* Page Header */}
+      <PageHeader
+        title={isTa ? 'எனக்கு தகுதியான நலத்திட்டங்கள்' : 'My Eligible Schemes'}
+        subtitle={
+          isTa
+            ? 'அரசு தகுதி விதிகளுக்கு உட்பட்டு உங்கள் சுயவிவரத்துடன் பொருந்தக்கூடிய திட்டங்கள்'
+            : 'Personalized government welfare schemes matched to your authenticated profile credentials'
+        }
+        badge={isTa ? 'தானியங்கி தகுதி கணிப்பு' : 'Automated Policy Match'}
+        badgeVariant="teal"
+        icon={BadgeCheck}
+        breadcrumbs={[
+          { label: isTa ? 'முகப்பு' : 'Dashboard', href: '/citizen/dashboard' },
+          { label: isTa ? 'தகுதியானவை' : 'Eligible Schemes' }
+        ]}
+        actions={
+          <Link
+            to="/citizen/profile"
+            className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-[#172B4D] text-xs font-bold rounded-xl shadow-2xs transition-colors flex items-center space-x-2"
+          >
+            <UserCheck className="w-4 h-4 text-teal-600" />
+            <span>{isTa ? 'சுயவிவரம் புதுப்பிக்க' : 'Update Profile Facts'}</span>
+          </Link>
+        }
+      />
 
-          <div className="flex items-center space-x-3 shrink-0">
-            <Link
-              to="/citizen/profile"
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center space-x-2"
-            >
-              <UserCheck className="w-4 h-4 text-teal-400" />
-              <span>{isTa ? 'சுயவிவரத்தைப் புதுப்பிக்க' : 'Update Profile'}</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Small Disclaimer */}
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center space-x-2 text-[11px] text-slate-400">
-          <Info className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-          <span>
-            {isTa
-              ? 'குறிப்பு: தகுதி நிலை உங்கள் சுயவிவரத் தகவலின் அடிப்படையில் கணிக்கப்பட்டது. அதிகாரப்பூர்வ சான்றிதழ் சரிபார்ப்புக்கு உட்பட்டது.'
-              : 'Eligibility is based on the information currently available in your profile and may require official verification during application submission.'}
-          </span>
-        </div>
-      </div>
-
-      {/* Top Compact Summary Statistics (Requirement 6) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        
+      {/* Top Filter Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <button
-          onClick={() => { setSelectedStatus('STRONG_MATCH'); setSearchParams({ status: 'strong' }); }}
-          className={`p-4 rounded-2xl border text-left transition-all ${
+          onClick={() => {
+            setSelectedStatus('STRONG_MATCH');
+            setSearchParams({ status: 'strong' });
+          }}
+          className={`gov-card p-4 text-left transition-all duration-200 border-l-4 ${
             selectedStatus === 'STRONG_MATCH' || selectedStatus === 'STRONG'
-              ? 'bg-emerald-50 border-emerald-500 shadow-sm ring-2 ring-emerald-400'
-              : 'glass-card hover:border-emerald-300'
+              ? 'border-l-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+              : 'border-l-emerald-500 hover:border-slate-300'
           }`}
         >
-          <div className="text-2xl font-black text-emerald-900">{summary.strongMatches || 0}</div>
-          <div className="text-xs font-bold text-emerald-700 mt-1 flex items-center justify-between">
-            <span>{isTa ? 'முழு தகுதி' : 'Strong Match'}</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-extrabold text-[#172B4D]">
+              {summary.strongMatches || 0}
+            </span>
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div className="text-xs font-bold text-slate-800 mt-1">
+            {isTa ? 'முழு தகுதி' : 'Strong Matches'}
+          </div>
+          <div className="text-[11px] font-semibold text-emerald-700 mt-0.5">
+            {isTa ? 'உடனடி விண்ணப்பம்' : 'Ready to apply'}
           </div>
         </button>
 
         <button
-          onClick={() => { setSelectedStatus('POTENTIAL_MATCH'); setSearchParams({ status: 'potential' }); }}
-          className={`p-4 rounded-2xl border text-left transition-all ${
+          onClick={() => {
+            setSelectedStatus('POTENTIAL_MATCH');
+            setSearchParams({ status: 'potential' });
+          }}
+          className={`gov-card p-4 text-left transition-all duration-200 border-l-4 ${
             selectedStatus === 'POTENTIAL_MATCH' || selectedStatus === 'POTENTIAL'
-              ? 'bg-amber-50 border-amber-500 shadow-sm ring-2 ring-amber-400'
-              : 'glass-card hover:border-amber-300'
+              ? 'border-l-amber-500 bg-amber-50/70 ring-2 ring-amber-500/20'
+              : 'border-l-amber-500 hover:border-slate-300'
           }`}
         >
-          <div className="text-2xl font-black text-amber-900">{summary.potentialMatches || 0}</div>
-          <div className="text-xs font-bold text-amber-700 mt-1 flex items-center justify-between">
-            <span>{isTa ? 'சாத்தியமான தகுதி' : 'Potential Match'}</span>
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-extrabold text-[#172B4D]">
+              {summary.potentialMatches || 0}
+            </span>
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+          </div>
+          <div className="text-xs font-bold text-slate-800 mt-1">
+            {isTa ? 'சாத்தியமான தகுதி' : 'Potential Matches'}
+          </div>
+          <div className="text-[11px] font-semibold text-amber-700 mt-0.5">
+            {isTa ? 'ஆவணம் தேவை' : 'Conditional match'}
           </div>
         </button>
 
         <button
-          onClick={() => { setSelectedStatus('NEEDS_INFORMATION'); setSearchParams({ status: 'needs_info' }); }}
-          className={`p-4 rounded-2xl border text-left transition-all ${
+          onClick={() => {
+            setSelectedStatus('NEEDS_INFORMATION');
+            setSearchParams({ status: 'needs_info' });
+          }}
+          className={`gov-card p-4 text-left transition-all duration-200 border-l-4 ${
             selectedStatus === 'NEEDS_INFORMATION' || selectedStatus === 'NEEDS_INFO'
-              ? 'bg-sky-50 border-sky-500 shadow-sm ring-2 ring-sky-400'
-              : 'glass-card hover:border-sky-300'
+              ? 'border-l-sky-500 bg-sky-50/70 ring-2 ring-sky-500/20'
+              : 'border-l-sky-500 hover:border-slate-300'
           }`}
         >
-          <div className="text-2xl font-black text-sky-900">{summary.needsInformation || 0}</div>
-          <div className="text-xs font-bold text-sky-700 mt-1 flex items-center justify-between">
-            <span>{isTa ? 'கூடுதல் தகவல் தேவை' : 'More Info Needed'}</span>
-            <HelpCircle className="w-4 h-4 text-sky-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-extrabold text-[#172B4D]">
+              {summary.needsInformation || 0}
+            </span>
+            <HelpCircle className="w-5 h-5 text-sky-600" />
+          </div>
+          <div className="text-xs font-bold text-slate-800 mt-1">
+            {isTa ? 'கூடுதல் விவரம்' : 'More Info Needed'}
+          </div>
+          <div className="text-[11px] font-semibold text-sky-700 mt-0.5">
+            {isTa ? 'விவரம் நிரப்பவும்' : 'Update profile info'}
           </div>
         </button>
 
         <button
-          onClick={() => { setSelectedStatus('DOCS_NEEDED'); setSearchParams({ status: 'docs' }); }}
-          className={`p-4 rounded-2xl border text-left transition-all ${
+          onClick={() => {
+            setSelectedStatus('DOCS_NEEDED');
+            setSearchParams({ status: 'docs' });
+          }}
+          className={`gov-card p-4 text-left transition-all duration-200 border-l-4 ${
             selectedStatus === 'DOCS_NEEDED'
-              ? 'bg-indigo-50 border-indigo-500 shadow-sm ring-2 ring-indigo-400'
-              : 'glass-card hover:border-indigo-300'
+              ? 'border-l-indigo-500 bg-indigo-50/70 ring-2 ring-indigo-500/20'
+              : 'border-l-indigo-500 hover:border-slate-300'
           }`}
         >
-          <div className="text-2xl font-black text-indigo-900">{summary.documentsNeeded || 0}</div>
-          <div className="text-xs font-bold text-indigo-700 mt-1 flex items-center justify-between">
-            <span>{isTa ? 'ஆவணங்கள் தேவை' : 'Docs Needed'}</span>
-            <FileCheck2 className="w-4 h-4 text-indigo-600" />
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-extrabold text-[#172B4D]">
+              {summary.documentsNeeded || 0}
+            </span>
+            <FileCheck2 className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div className="text-xs font-bold text-slate-800 mt-1">
+            {isTa ? 'ஆவணங்கள் தேவை' : 'Docs Required'}
+          </div>
+          <div className="text-[11px] font-semibold text-indigo-700 mt-0.5">
+            {isTa ? 'சான்றிதழ் பதிவேற்றுக' : 'Upload certificate'}
           </div>
         </button>
-
       </div>
 
-      {/* Filter and Search Bar (Requirement 29) */}
-      <div className="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-        
-        {/* Quick Filter Tabs */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+      {/* Search, Domain Filter & Sort Bar */}
+      <div className="gov-card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Status Filter Tabs */}
+        <div className="flex items-center space-x-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           <button
-            onClick={() => { setSelectedStatus('ALL'); setSearchParams({}); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            onClick={() => {
+              setSelectedStatus('ALL');
+              setSearchParams({});
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition-colors ${
               selectedStatus === 'ALL'
-                ? 'bg-slate-900 text-white shadow-sm'
+                ? 'bg-[#10243A] text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
@@ -297,224 +314,263 @@ export const MyEligibleSchemesPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => { setSelectedStatus('STRONG'); setSearchParams({ status: 'strong' }); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            onClick={() => {
+              setSelectedStatus('STRONG');
+              setSearchParams({ status: 'strong' });
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
               selectedStatus === 'STRONG' || selectedStatus === 'STRONG_MATCH'
-                ? 'bg-emerald-700 text-white shadow-sm'
+                ? 'bg-emerald-700 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            {isTa ? 'முழு தகுதி' : 'Strong Matches'}
+            {isTa ? 'முழு தகுதி' : 'Strong'}
           </button>
 
           <button
-            onClick={() => { setSelectedStatus('POTENTIAL'); setSearchParams({ status: 'potential' }); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            onClick={() => {
+              setSelectedStatus('POTENTIAL');
+              setSearchParams({ status: 'potential' });
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
               selectedStatus === 'POTENTIAL' || selectedStatus === 'POTENTIAL_MATCH'
-                ? 'bg-amber-600 text-white shadow-sm'
+                ? 'bg-amber-600 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            {isTa ? 'சாத்தியமான தகுதி' : 'Potential Matches'}
+            {isTa ? 'சாத்தியமானவை' : 'Potential'}
           </button>
 
           <button
-            onClick={() => { setSelectedStatus('NEEDS_INFO'); setSearchParams({ status: 'needs_info' }); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            onClick={() => {
+              setSelectedStatus('NEEDS_INFO');
+              setSearchParams({ status: 'needs_info' });
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
               selectedStatus === 'NEEDS_INFO' || selectedStatus === 'NEEDS_INFORMATION'
-                ? 'bg-sky-700 text-white shadow-sm'
+                ? 'bg-sky-700 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            {isTa ? 'கூடுதல் தகவல்' : 'More Info'}
+            {isTa ? 'விவரம் தேவை' : 'Info Needed'}
           </button>
 
           <button
-            onClick={() => { setSelectedStatus('DOCS_NEEDED'); setSearchParams({ status: 'docs' }); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            onClick={() => {
+              setSelectedStatus('DOCS_NEEDED');
+              setSearchParams({ status: 'docs' });
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
               selectedStatus === 'DOCS_NEEDED'
-                ? 'bg-indigo-700 text-white shadow-sm'
+                ? 'bg-indigo-700 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            {isTa ? 'ஆவணங்கள் தேவை' : 'Docs Needed'}
+            {isTa ? 'ஆவணங்கள்' : 'Docs Needed'}
           </button>
         </div>
 
-        {/* Search & Domain Filter Dropdown */}
-        <div className="flex items-center space-x-2">
-          
-          <div className="relative flex-1 md:w-48">
+        {/* Search, Domain & Sort Inputs */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search Box */}
+          <div className="relative flex-1 sm:w-48">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder={isTa ? 'திட்டத்தைத் தேட...' : 'Search schemes...'}
+              placeholder={isTa ? 'திட்டத்தை தேடுக...' : 'Search by title / code...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 outline-none"
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 outline-none"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
+          {/* Department Domain Dropdown */}
           <div className="relative">
             <select
               value={selectedDomain}
               onChange={(e) => setSelectedDomain(e.target.value)}
-              className="pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none appearance-none"
+              className="pl-2.5 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-600/30 outline-none appearance-none"
             >
-              <option value="ALL">{isTa ? 'அனைத்துத் துறைகள்' : 'All Welfare Areas'}</option>
+              <option value="ALL">{isTa ? 'அனைத்துத் துறைகள்' : 'All Sectors'}</option>
               {domains.map((d) => (
                 <option key={d.domainKey} value={d.domainKey}>
                   {isTa ? d.name?.ta || d.name?.en : d.name?.en}
                 </option>
               ))}
             </select>
-            <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+            <Filter className="w-3 h-3 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
           </div>
 
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e: any) => setSortBy(e.target.value)}
+              className="pl-2.5 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-600/30 outline-none appearance-none"
+            >
+              <option value="match">{isTa ? 'பொருத்தம் அடிப்படையில்' : 'Sort: Match Score'}</option>
+              <option value="name">{isTa ? 'பெயர் அடிப்படையில்' : 'Sort: Name'}</option>
+              <option value="domain">{isTa ? 'துறை அடிப்படையில்' : 'Sort: Sector'}</option>
+            </select>
+            <ArrowUpDown className="w-3 h-3 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
+          </div>
         </div>
-
       </div>
 
-      {/* Main Section — Best Matches For You (Requirement 7, 8, 9, 30) */}
+      {/* Scheme Cards Grid */}
       <div className="space-y-4">
-        
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-teal-600" />
-            <span>{isTa ? 'உங்களுக்கான பரிந்துரைக்கப்பட்ட நலத்திட்டங்கள்' : 'Best Matches For You'}</span>
-          </h2>
-          <span className="text-xs font-bold text-slate-500">
-            {filteredRecommendations.length} {isTa ? 'திட்டங்கள் கண்டறியப்பட்டன' : 'schemes found'}
+        <div className="flex items-center justify-between text-xs font-bold text-slate-600 px-1">
+          <span>
+            {sortedRecommendations.length} {isTa ? 'திட்டங்கள் கண்டறியப்பட்டன' : 'schemes found matching criteria'}
+          </span>
+          <span className="text-[11px] text-slate-400 font-medium">
+            {isTa ? 'சான்றிதழ் சரிபார்ப்புக்கு உட்பட்டது' : 'Subject to official document verification'}
           </span>
         </div>
 
-        {filteredRecommendations.length === 0 ? (
-          /* Empty State (Requirement 31) */
-          <div className="glass-card p-10 rounded-3xl text-center space-y-4 max-w-xl mx-auto border border-dashed border-slate-300">
-            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-              <Search className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900">
-                {isTa ? 'பொருந்தக்கூடிய நலத்திட்டங்கள் எதுவும் கிடைக்கவில்லை' : 'No matching schemes found'}
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                {isTa
-                  ? 'உங்கள் தற்போதைய சுயவிவரத் தகவலின் அடிப்படையில் நேரடி தகுதிகள் ஏதும் கிடைக்கவில்லை. உங்கள் சுயவிவரத்தை முழுமையாக்கவும்.'
-                  : 'We couldn\'t find a current match based on the information in your profile. Complete your profile details to improve scheme matching.'}
-              </p>
-            </div>
-            <div className="flex items-center justify-center space-x-3 pt-2">
-              <Link
-                to="/citizen/profile"
-                className="px-4 py-2 bg-blue-900 text-white font-bold text-xs rounded-xl hover:bg-blue-950 transition-colors shadow-sm"
-              >
-                {isTa ? 'சுயவிவரத்தை புதுப்பிக்க' : 'Complete Profile'}
-              </Link>
-              <Link
-                to="/citizen/schemes"
-                className="px-4 py-2 bg-slate-100 text-slate-800 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors"
-              >
-                {isTa ? 'அனைத்துத் திட்டங்களையும் காண்க' : 'Explore All Schemes'}
-              </Link>
-            </div>
-          </div>
+        {sortedRecommendations.length === 0 ? (
+          <EmptyState
+            icon={Search}
+            title={isTa ? 'பொருந்தக்கூடிய நலத்திட்டங்கள் இல்லை' : 'No Matching Schemes Found'}
+            description={
+              isTa
+                ? 'உங்கள் தற்போதைய வடிகட்டி அல்லது சுயவிவரத்தின்படி திட்டங்கள் கிடைக்கவில்லை. சுயவிவரத்தைப் புதுப்பித்து பார்க்கவும்.'
+                : 'No schemes match the selected filters. Try adjusting your search query, sector filter, or update your citizen profile details.'
+            }
+            actionText={isTa ? 'சுயவிவரத்தை புதுப்பிக்க' : 'Update Profile Facts'}
+            onAction={() => window.location.assign('/citizen/profile')}
+            secondaryActionText={isTa ? 'வடிகட்டிகளை அழிக்க' : 'Clear Filters'}
+            onSecondaryAction={() => {
+              setSelectedStatus('ALL');
+              setSelectedDomain('ALL');
+              setSearchQuery('');
+              setSearchParams({});
+            }}
+          />
         ) : (
-          /* List of Scheme Cards */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredRecommendations.map((item) => {
-              const { scheme, status, criteriaBreakdown, missingInformation, missingDocuments, gapAnalysisRemarks } = item;
+            {sortedRecommendations.map((item) => {
+              const {
+                scheme,
+                status,
+                criteriaBreakdown,
+                missingInformation,
+                missingDocuments,
+                gapAnalysisRemarks
+              } = item;
               const title = isTa ? scheme?.name?.ta || scheme?.name?.en : scheme?.name?.en;
-              const domainName = isTa ? scheme?.domainKey : scheme?.domainKey;
-              const benefitText = isTa ? scheme?.benefitSummary?.ta || scheme?.benefitSummary?.en : scheme?.benefitSummary?.en;
-
+              const benefitText = isTa
+                ? scheme?.benefitSummary?.ta || scheme?.benefitSummary?.en
+                : scheme?.benefitSummary?.en;
               const passedCriteria = (criteriaBreakdown || []).filter((c: any) => c.passed);
 
               return (
                 <div
                   key={scheme._id || scheme.schemeCode}
-                  className="glass-card p-5 rounded-2xl border border-slate-200 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                  className="gov-card p-5 flex flex-col justify-between space-y-4 hover:border-slate-300 transition-all duration-200"
                 >
                   <div>
-                    {/* Card Top: Domain & Status */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wider border border-slate-200">
-                        {scheme.domainKey?.replace('_', ' ')}
-                      </span>
-                      {getStatusBadgeUI(status)}
+                    {/* Top: Scheme Code & Status */}
+                    <div className="flex items-start justify-between gap-2 mb-2.5">
+                      <div className="flex items-center space-x-1.5 flex-wrap gap-1">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-slate-100 text-[#10243A] border border-slate-200">
+                          {scheme.schemeCode || scheme.domainKey?.replace('_', ' ')}
+                        </span>
+                        {scheme.domainKey && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-blue-50 text-blue-800 border border-blue-200">
+                            {scheme.domainKey.replace(/_/g, ' ')}
+                          </span>
+                        )}
+                      </div>
+                      <StatusBadge status={status} isTamil={isTa} size="sm" />
                     </div>
 
-                    {/* Scheme Titles */}
-                    <h3 className="text-base font-bold text-slate-900 tracking-tight leading-snug">
-                      {title}
+                    {/* Scheme Title */}
+                    <h3 className="text-[15px] font-bold text-[#172B4D] tracking-tight leading-snug hover:text-blue-700 transition-colors">
+                      <Link to={`/schemes/${scheme._id}`}>{title}</Link>
                     </h3>
-                    {scheme?.name?.ta && !isTa && (
-                      <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                        {scheme.name.ta}
-                      </p>
-                    )}
 
-                    {/* Benefit Summary */}
+                    {/* Benefit Text Box */}
                     {benefitText && (
-                      <div className="mt-3 p-2.5 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-blue-900">
-                        <span className="font-bold">{isTa ? 'உதவி விவரம்: ' : 'Benefit: '}</span>
-                        {benefitText}
+                      <div className="mt-3 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-xs text-emerald-950">
+                        <div className="text-[10px] font-bold uppercase text-emerald-800 mb-0.5">
+                          {isTa ? 'அரசு உதவித்தொகை:' : 'Government Financial Grant:'}
+                        </div>
+                        <div className="font-extrabold">{benefitText}</div>
                       </div>
                     )}
 
-                    {/* Why this scheme appears (Requirement 9) */}
-                    <div className="mt-4 space-y-1.5">
-                      <div className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">
-                        {isTa ? 'ஏன் இந்தத் திட்டம் பொருந்துகிறது:' : 'Why this scheme appears:'}
+                    {/* Explainable Matching Logic Section */}
+                    <div className="mt-3.5 space-y-1.5">
+                      <div className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                        {isTa ? 'தகுதி பொருத்தம் & நிபந்தனைகள்:' : 'Why You Match This Scheme:'}
                       </div>
 
-                      {/* Criteria Checkmarks */}
+                      {/* Passed Criteria */}
                       {passedCriteria.slice(0, 3).map((c: any, idx: number) => (
-                        <div key={idx} className="flex items-start space-x-2 text-xs text-emerald-800">
+                        <div key={idx} className="flex items-start space-x-1.5 text-xs text-emerald-900">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                          <span>{isTa ? c.label?.ta || c.label?.en : c.label?.en}</span>
+                          <span className="leading-tight">
+                            {isTa ? c.label?.ta || c.label?.en : c.label?.en}
+                          </span>
                         </div>
                       ))}
 
-                      {/* Missing Documents Warning */}
+                      {/* Missing Documents Alert */}
                       {missingDocuments && missingDocuments.length > 0 && (
-                        <div className="flex items-start space-x-2 text-xs text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200/60 mt-1">
+                        <div className="flex items-start space-x-1.5 text-xs text-amber-900 bg-amber-50 p-2 rounded-xl border border-amber-200/70 mt-1">
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-bold">{isTa ? 'ஆவணம் தேவை: ' : 'Required Document: '}</span>
-                            {missingDocuments.map((d: any) => (isTa ? d.label?.ta || d.label?.en : d.label?.en)).join(', ')}
+                          <div className="leading-tight">
+                            <span className="font-bold">
+                              {isTa ? 'ஆவணம் தேவை: ' : 'Required Document: '}
+                            </span>
+                            {missingDocuments
+                              .map((d: any) => (isTa ? d.label?.ta || d.label?.en : d.label?.en))
+                              .join(', ')}
                           </div>
                         </div>
                       )}
 
-                      {/* Missing Info Warning */}
+                      {/* Missing Information Alert */}
                       {missingInformation && missingInformation.length > 0 && (
-                        <div className="flex items-start space-x-2 text-xs text-sky-800 bg-sky-50 p-2 rounded-xl border border-sky-200/60 mt-1">
+                        <div className="flex items-start space-x-1.5 text-xs text-sky-900 bg-sky-50 p-2 rounded-xl border border-sky-200/70 mt-1">
                           <Info className="w-3.5 h-3.5 text-sky-600 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-bold">{isTa ? 'விவரம் தேவை: ' : 'Information Needed: '}</span>
-                            {missingInformation.map((m: any) => (isTa ? m.label?.ta || m.label?.en : m.label?.en)).join(', ')}
+                          <div className="leading-tight">
+                            <span className="font-bold">
+                              {isTa ? 'விவரம் தேவை: ' : 'Profile Info Needed: '}
+                            </span>
+                            {missingInformation
+                              .map((m: any) => (isTa ? m.label?.ta || m.label?.en : m.label?.en))
+                              .join(', ')}
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Card Bottom CTA Actions */}
+                  {/* Card Bottom Actions */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <button
                       onClick={() => setSelectedSchemeDetail(scheme)}
-                      className="px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                      className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                     >
-                      {isTa ? 'விவரங்களைக் காண்க' : 'View Details'}
+                      {isTa ? 'விவரங்களைக் காண்க' : 'View Breakdown'}
                     </button>
 
                     <Link
                       to={`/citizen/apply/${scheme._id}`}
-                      className="px-4 py-2 text-xs font-bold text-white bg-blue-900 hover:bg-blue-950 rounded-xl shadow-xs transition-colors flex items-center space-x-1.5"
+                      className="px-4 py-1.5 text-xs font-bold text-white bg-[#10243A] hover:bg-[#193352] rounded-lg shadow-2xs transition-colors flex items-center space-x-1.5 active:scale-95"
                     >
                       <span>{isTa ? 'விண்ணப்பிக்க' : 'Apply Now'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3 h-3 ml-0.5" />
                     </Link>
                   </div>
                 </div>
@@ -522,29 +578,36 @@ export const MyEligibleSchemesPage: React.FC = () => {
             })}
           </div>
         )}
-
       </div>
 
-      {/* Optional Not Eligible Collapsible Section (Requirement 32) */}
+      {/* Not Eligible Collapsible Section */}
       {notEligibleRecommendations.length > 0 && (
-        <div className="glass-card rounded-2xl overflow-hidden border border-slate-200">
+        <div className="gov-card rounded-2xl overflow-hidden border border-slate-200">
           <button
             onClick={() => setShowNotEligible(!showNotEligible)}
-            className="w-full p-4 bg-slate-100/80 hover:bg-slate-200/60 flex items-center justify-between text-xs font-bold text-slate-700 transition-colors"
+            className="w-full p-4 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between text-xs font-bold text-slate-700 transition-colors"
           >
             <div className="flex items-center space-x-2">
-              <XCircle className="w-4 h-4 text-slate-500" />
+              <XCircle className="w-4 h-4 text-slate-400" />
               <span>
-                {isTa ? 'தற்போது தகுதியற்ற திட்டங்கள்' : 'Not Currently a Match'} ({notEligibleRecommendations.length})
+                {isTa ? 'தற்போது தகுதியற்ற திட்டங்கள்' : 'Schemes You Do Not Currently Match'} (
+                {notEligibleRecommendations.length})
               </span>
             </div>
-            {showNotEligible ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showNotEligible ? (
+              <ChevronUp className="w-4 h-4 text-slate-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-500" />
+            )}
           </button>
 
           {showNotEligible && (
             <div className="p-4 space-y-3 divide-y divide-slate-100">
-              {notEligibleRecommendations.slice(0, 3).map((item) => (
-                <div key={item.scheme._id} className="pt-3 first:pt-0 flex items-start justify-between text-xs">
+              {notEligibleRecommendations.map((item) => (
+                <div
+                  key={item.scheme._id}
+                  className="pt-3 first:pt-0 flex items-start justify-between text-xs"
+                >
                   <div>
                     <h4 className="font-bold text-slate-800">
                       {isTa ? item.scheme?.name?.ta || item.scheme?.name?.en : item.scheme?.name?.en}
@@ -554,10 +617,10 @@ export const MyEligibleSchemesPage: React.FC = () => {
                     </p>
                   </div>
                   <Link
-                    to={`/citizen/schemes/${item.scheme._id}`}
-                    className="text-blue-900 font-bold hover:underline shrink-0 ml-4"
+                    to={`/schemes/${item.scheme._id}`}
+                    className="text-blue-700 font-bold hover:underline shrink-0 ml-4"
                   >
-                    {isTa ? 'விவரம்' : 'View Rules'}
+                    {isTa ? 'விவரம்' : 'View Policy'}
                   </Link>
                 </div>
               ))}
@@ -568,40 +631,56 @@ export const MyEligibleSchemesPage: React.FC = () => {
 
       {/* Scheme Details Modal */}
       {selectedSchemeDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between">
               <div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 uppercase">
-                  {selectedSchemeDetail.domainKey?.replace('_', ' ')}
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-blue-50 text-blue-900 border border-blue-200">
+                  {selectedSchemeDetail.schemeCode || selectedSchemeDetail.domainKey?.replace('_', ' ')}
                 </span>
-                <h3 className="text-lg font-bold text-slate-900 mt-1">
-                  {isTa ? selectedSchemeDetail.name?.ta || selectedSchemeDetail.name?.en : selectedSchemeDetail.name?.en}
+                <h3 className="text-base font-extrabold text-[#172B4D] mt-1.5 leading-snug">
+                  {isTa
+                    ? selectedSchemeDetail.name?.ta || selectedSchemeDetail.name?.en
+                    : selectedSchemeDetail.name?.en}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedSchemeDetail(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-600 max-h-96 overflow-y-auto">
+            <div className="space-y-3.5 text-xs text-slate-600 max-h-[60vh] overflow-y-auto pr-1">
               <div>
-                <h4 className="font-bold text-slate-900">{isTa ? 'திட்டத்தைப் பற்றி:' : 'About Scheme:'}</h4>
-                <p className="mt-0.5">{isTa ? selectedSchemeDetail.description?.ta || selectedSchemeDetail.description?.en : selectedSchemeDetail.description?.en}</p>
+                <h4 className="font-bold text-[#172B4D] uppercase text-[10px] tracking-wider mb-1">
+                  {isTa ? 'திட்டத்தைப் பற்றி:' : 'About Scheme:'}
+                </h4>
+                <p className="leading-relaxed">
+                  {isTa
+                    ? selectedSchemeDetail.description?.ta || selectedSchemeDetail.description?.en
+                    : selectedSchemeDetail.description?.en}
+                </p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900">{isTa ? 'அரசு உதவி விவரம்:' : 'Benefit Summary:'}</h4>
-                <p className="mt-0.5 font-semibold text-blue-900">{isTa ? selectedSchemeDetail.benefitSummary?.ta || selectedSchemeDetail.benefitSummary?.en : selectedSchemeDetail.benefitSummary?.en}</p>
+                <h4 className="font-bold text-[#172B4D] uppercase text-[10px] tracking-wider mb-1">
+                  {isTa ? 'அரசு உதவி விவரம்:' : 'Official Benefit Grant:'}
+                </h4>
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 font-bold">
+                  {isTa
+                    ? selectedSchemeDetail.benefitSummary?.ta || selectedSchemeDetail.benefitSummary?.en
+                    : selectedSchemeDetail.benefitSummary?.en}
+                </div>
               </div>
 
               {selectedSchemeDetail.requiredDocuments && selectedSchemeDetail.requiredDocuments.length > 0 && (
                 <div>
-                  <h4 className="font-bold text-slate-900">{isTa ? 'தேவையான ஆவணங்கள்:' : 'Required Proof Documents:'}</h4>
-                  <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  <h4 className="font-bold text-[#172B4D] uppercase text-[10px] tracking-wider mb-1">
+                    {isTa ? 'தேவையான ஆவணங்கள்:' : 'Required Verification Documents:'}
+                  </h4>
+                  <ul className="list-disc list-inside space-y-1">
                     {selectedSchemeDetail.requiredDocuments.map((doc: any, i: number) => (
                       <li key={i}>{isTa ? doc.label?.ta || doc.label?.en : doc.label?.en}</li>
                     ))}
@@ -610,18 +689,18 @@ export const MyEligibleSchemesPage: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-200 flex items-center justify-end space-x-3">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
               <button
                 onClick={() => setSelectedSchemeDetail(null)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
               >
                 {isTa ? 'மூடுக' : 'Close'}
               </button>
               <Link
                 to={`/citizen/apply/${selectedSchemeDetail._id}`}
-                className="px-4 py-2 bg-blue-900 text-white font-bold text-xs rounded-xl hover:bg-blue-950"
+                className="px-4 py-2 bg-[#10243A] hover:bg-[#193352] text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
               >
-                {isTa ? 'இப்போது விண்ணப்பிக்க' : 'Apply Now'}
+                {isTa ? 'விண்ணப்பிக்க' : 'Apply Now'}
               </Link>
             </div>
           </div>

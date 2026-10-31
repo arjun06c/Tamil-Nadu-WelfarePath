@@ -40,7 +40,7 @@ import { ApplyPage } from './pages/ApplyPage';
 // Officer Workspace Pages
 import { OfficerDashboardPage } from './pages/OfficerDashboardPage';
 import { OfficerApplicationQueuePage } from './pages/officer/OfficerApplicationQueuePage';
-import { OfficerVerificationQueuePage } from './pages/officer/OfficerVerificationQueuePage';
+import { OfficerVerificationWorkspacePage } from './pages/officer/OfficerVerificationWorkspacePage';
 import { OfficerCorrectionsPage } from './pages/officer/OfficerCorrectionsPage';
 import { OfficerReportsPage } from './pages/officer/OfficerReportsPage';
 import { OfficerSettingsPage } from './pages/officer/OfficerSettingsPage';
@@ -95,7 +95,7 @@ export const App: React.FC = () => {
             <Route path="schemes/:id" element={<SchemeDetailPage />} />
             <Route path="apply/:schemeId" element={<ApplyPage />} />
             <Route path="eligibility" element={<EligibilityResultPage />} />
-            <Route path="portfolio" element={<DashboardPage />} />
+            <Route path="portfolio" element={<Navigate to="/citizen/dashboard" replace />} />
             <Route path="applications" element={<MyApplicationsPage />} />
             <Route path="applications/:id" element={<ApplicationTrackingPage />} />
             <Route path="applications/:id/documents" element={<ApplicationDocumentsPage />} />
@@ -120,8 +120,8 @@ export const App: React.FC = () => {
             <Route index element={<Navigate to="/officer/dashboard" replace />} />
             <Route path="dashboard" element={<OfficerDashboardPage />} />
             <Route path="applications" element={<OfficerApplicationQueuePage />} />
-            <Route path="applications/:id" element={<ApplicationTrackingPage />} />
-            <Route path="verification" element={<OfficerVerificationQueuePage />} />
+            <Route path="applications/:id" element={<OfficerVerificationWorkspacePage />} />
+            <Route path="verification" element={<Navigate to="/officer/applications?queue=pending" replace />} />
             <Route path="corrections" element={<OfficerCorrectionsPage />} />
             <Route path="reports" element={<OfficerReportsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
